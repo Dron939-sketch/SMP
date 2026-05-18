@@ -80,7 +80,13 @@ function BriefModal({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
-        <button className="btn-primary w-full mt-4" onClick={onClose}>
+        <div className="mt-4 pt-3 border-t border-white/5 text-xs text-slate-500 text-center leading-relaxed">
+          Разработано{" "}
+          <span className="text-slate-300">Андреем Мейстером</span>{" "}
+          специально для{" "}
+          <span className="text-slate-300">СпецМонтажПроект</span>.
+        </div>
+        <button className="btn-primary w-full mt-3" onClick={onClose}>
           Понятно
         </button>
       </div>
