@@ -48,13 +48,29 @@ async def _create_schema(eng: AsyncEngine) -> None:
 
 
 async def _ensure_user(
-    session, *, email, password, role, full_name, department=None, site=None, position=None
+    session,
+    *,
+    email,
+    password,
+    role,
+    full_name,
+    department=None,
+    site=None,
+    position=None,
+    force_password_reset=False,
 ):
     existing = (
         await session.execute(select(User).where(User.email == email))
     ).scalar_one_or_none()
     if existing:
+        if force_password_reset:
+            existing.hashed_password = hash_password(password)
+            existing.is_active = True
+            existing.consent_given = True
+            await session.flush()
+            logger.info("seed.user.password_reset", email=email)
         return existing
+    logger.info("seed.user.create", email=email, role=role.value)
     user = User(
         email=email,
         hashed_password=hash_password(password),
@@ -73,17 +89,28 @@ async def _ensure_user(
 
 async def _migrate_legacy_emails(session) -> None:
     """Старые сиды использовали @smp.local (RFC-зарезервированный домен,
-    email-validator его отклоняет). Меняем на @smp.team у всех существующих
-    учёток. Идемпотентно — если их нет, ничего не делает.
+    email-validator его отклоняет). Меняем на @smp.team. Устойчиво к
+    коллизиям: если такой @smp.team уже есть — удаляем legacy-копию,
+    иначе UNIQUE-констрейнт уронил бы весь seed.
     """
     legacy = (
         await session.execute(select(User).where(User.email.like("%@smp.local")))
     ).scalars().all()
+    if not legacy:
+        return
     for u in legacy:
         local = u.email.split("@", 1)[0]
-        u.email = f"{local}@smp.team"
-    if legacy:
-        await session.flush()
+        new_email = f"{local}@smp.team"
+        target = (
+            await session.execute(select(User).where(User.email == new_email))
+        ).scalar_one_or_none()
+        if target and target.id != u.id:
+            logger.info("seed.migrate.delete_legacy_duplicate", email=u.email)
+            await session.delete(u)
+        else:
+            u.email = new_email
+            logger.info("seed.migrate.renamed", from_=u.email, to=new_email)
+    await session.flush()
 
 
 async def _seed_users(session) -> None:
