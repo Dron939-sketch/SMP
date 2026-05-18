@@ -31,6 +31,13 @@ const SEVERITY_COLOR: Record<string, string> = {
   critical: "bg-red-500/10 text-red-300 border-red-500/30",
 };
 
+function CellMetric({ v, invert }: { v: number; invert?: boolean }) {
+  const good = invert ? v <= 2.5 : v >= 3.5;
+  const bad = invert ? v >= 4 : v <= 2.5;
+  const color = good ? "text-smp-ok" : bad ? "text-smp-crit" : "text-smp-warn";
+  return <td className={`py-2 px-2 font-mono ${color}`}>{v.toFixed(1)}</td>;
+}
+
 export default function Dashboard({ user }: { user: User }) {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -75,26 +82,20 @@ export default function Dashboard({ user }: { user: User }) {
             <Link to="/tests" className="btn-ghost text-sm">
               Тесты и ссылки
             </Link>
-            <a className="btn-ghost text-sm" href={dashboard.exportXlsx()}>
-              Excel
-            </a>
           </div>
         </header>
 
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <MetricCard
-            label="Стресс"
-            value={cm.stress_index}
-            invert
-            hint="ниже — лучше"
-          />
-          <MetricCard
-            label="Доверие к рук-ву"
-            value={cm.leadership_trust}
-          />
-          <MetricCard label="Безопасность" value={cm.safety_culture} />
+          <MetricCard label="Стресс" value={cm.stress_index} invert hint="ниже — лучше" />
+          <MetricCard label="Риск выгорания" value={cm.burnout_risk} invert hint="ниже — лучше" />
+          <MetricCard label="Баланс работа/жизнь" value={cm.work_life_balance} />
           <MetricCard label="Бренд работодателя" value={cm.employer_brand} />
+          <MetricCard label="Доверие к рук-ву" value={cm.leadership_trust} />
+          <MetricCard label="Безопасность" value={cm.safety_culture} />
+          <MetricCard label="Карьера" value={cm.career_clarity} />
+          <MetricCard label="Командная сплочённость" value={cm.team_cohesion} />
           <MetricCard label="Лояльность" value={cm.loyalty_intent} />
+          <MetricCard label="Психобезопасность" value={cm.psychological_safety} />
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -148,6 +149,80 @@ export default function Dashboard({ user }: { user: User }) {
             </div>
           </div>
         </section>
+
+        {/* Подробная таблица по отделам (все 10 метрик) */}
+        <section className="card">
+          <div className="label mb-3">Подробно по отделам</div>
+          <div className="overflow-x-auto -mx-2 px-2">
+            <table className="w-full text-xs sm:text-sm">
+              <thead>
+                <tr className="text-slate-500 text-left">
+                  <th className="py-2 pr-3 font-medium">Отдел</th>
+                  <th className="py-2 px-2 font-medium" title="Стресс">Стр.</th>
+                  <th className="py-2 px-2 font-medium" title="Риск выгорания">Выг.</th>
+                  <th className="py-2 px-2 font-medium" title="Баланс работа/жизнь">Бал.</th>
+                  <th className="py-2 px-2 font-medium" title="Бренд работодателя">Бренд</th>
+                  <th className="py-2 px-2 font-medium" title="Доверие к руководству">Дов.</th>
+                  <th className="py-2 px-2 font-medium" title="Безопасность">Безоп.</th>
+                  <th className="py-2 px-2 font-medium" title="Карьера">Кар.</th>
+                  <th className="py-2 px-2 font-medium" title="Сплочённость">Спл.</th>
+                  <th className="py-2 px-2 font-medium" title="Лояльность">Лоял.</th>
+                  <th className="py-2 px-2 font-medium" title="Психобезопасность">Псих.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data.by_department).map(([dept, m]) => (
+                  <tr key={dept} className="border-t border-white/5">
+                    <td className="py-2 pr-3 font-medium">{dept}</td>
+                    <CellMetric v={m.stress_index} invert />
+                    <CellMetric v={m.burnout_risk} invert />
+                    <CellMetric v={m.work_life_balance} />
+                    <CellMetric v={m.employer_brand} />
+                    <CellMetric v={m.leadership_trust} />
+                    <CellMetric v={m.safety_culture} />
+                    <CellMetric v={m.career_clarity} />
+                    <CellMetric v={m.team_cohesion} />
+                    <CellMetric v={m.loyalty_intent} />
+                    <CellMetric v={m.psychological_safety} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Подробно по объектам */}
+        {Object.keys(data.by_site).length > 0 && (
+          <section className="card">
+            <div className="label mb-3">Подробно по объектам/участкам</div>
+            <div className="overflow-x-auto -mx-2 px-2">
+              <table className="w-full text-xs sm:text-sm">
+                <thead>
+                  <tr className="text-slate-500 text-left">
+                    <th className="py-2 pr-3 font-medium">Объект</th>
+                    <th className="py-2 px-2 font-medium">Стр.</th>
+                    <th className="py-2 px-2 font-medium">Дов.</th>
+                    <th className="py-2 px-2 font-medium">Безоп.</th>
+                    <th className="py-2 px-2 font-medium">Спл.</th>
+                    <th className="py-2 px-2 font-medium">Лоял.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(data.by_site).map(([s, m]) => (
+                    <tr key={s} className="border-t border-white/5">
+                      <td className="py-2 pr-3 font-medium">{s}</td>
+                      <CellMetric v={m.stress_index} invert />
+                      <CellMetric v={m.leadership_trust} />
+                      <CellMetric v={m.safety_culture} />
+                      <CellMetric v={m.team_cohesion} />
+                      <CellMetric v={m.loyalty_intent} />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {/* Anchor pretenders */}
         <section className="card">
