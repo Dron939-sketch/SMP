@@ -88,6 +88,16 @@ async def _migrate_legacy_emails(session) -> None:
 
 async def _seed_users(session) -> None:
     await _migrate_legacy_emails(session)
+    # Простая учётка для демо: «123 / 123». Имеет роль замполита,
+    # чтобы сразу попасть на дашборд.
+    await _ensure_user(
+        session,
+        email="123@smp.team",
+        password="123",
+        role=UserRole.POLITICAL_OFFICER,
+        full_name="Демо Замполит",
+        position="Замполит",
+    )
     await _ensure_user(
         session,
         email="admin@smp.team",
