@@ -1,6 +1,6 @@
 {
-  "name": "BuildPulse · СпецМонтажПроект",
-  "short_name": "BuildPulse",
+  "name": "Пульсометр · СпецМонтажПроект",
+  "short_name": "Пульсометр",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
