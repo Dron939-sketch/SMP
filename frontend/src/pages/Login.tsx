@@ -3,8 +3,8 @@ import { auth, setTokens } from "../api/client";
 import type { User } from "../types";
 
 export default function Login({ onLogin }: { onLogin: (u: User) => void }) {
-  const [email, setEmail] = useState("zorin@smp.team");
-  const [password, setPassword] = useState("zorin12345");
+  const [email, setEmail] = useState("123@smp.team");
+  const [password, setPassword] = useState("123");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +60,7 @@ export default function Login({ onLogin }: { onLogin: (u: User) => void }) {
         </button>
         <div className="text-xs text-slate-500 leading-relaxed">
           Демо-учётки:
+          <br />• 123@smp.team / 123 (быстрый вход)
           <br />• zorin@smp.team / zorin12345 (замполит)
           <br />• admin@smp.team / admin12345
           <br />• e1@smp.team / employee123 (сотрудник)
