@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { dashboard } from "../api/client";
 import { AboutSystem } from "../components/AboutSystem";
+import { CompanyPhaseBadge } from "../components/CompanyPhaseBadge";
 import { DashboardSkeleton } from "../components/DashboardSkeleton";
 import { GreetingPlayer } from "../components/GreetingPlayer";
 import { MetricCard } from "../components/MetricCard";
@@ -99,8 +100,16 @@ export default function Dashboard({ user }: { user: User }) {
               <Link to="/tests" className="btn-primary text-sm">
                 Тесты и ссылки
               </Link>
+              <Link to="/reports" className="btn-ghost text-sm">
+                Отчёты
+              </Link>
             </div>
           </div>
+
+          {/* Фаза компании */}
+          {data.company_phase && (
+            <CompanyPhaseBadge phase={data.company_phase} />
+          )}
         </header>
 
         <TopInsight data={data} />

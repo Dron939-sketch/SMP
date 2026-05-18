@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
+import Reports from "./pages/Reports";
 import SharedTest from "./pages/SharedTest";
 import TestList from "./pages/TestList";
 import TestRunner from "./pages/TestRunner";
@@ -58,6 +59,14 @@ export default function App() {
         element={
           <Layout>
             <TestRunner />
+          </Layout>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <Layout>
+            <Reports />
           </Layout>
         }
       />

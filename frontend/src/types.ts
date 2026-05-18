@@ -138,11 +138,76 @@ export interface TestStats {
   unique_respondents: number;
 }
 
+export type CompanyPhaseKind = "разбитие" | "среднее" | "стагнация";
+
+export interface CompanyPhase {
+  phase: CompanyPhaseKind;
+  reason: string;
+  engines_share: number;
+  anchors_share: number;
+  composite_positive: number;
+}
+
+export interface ResponseListItem {
+  response_id: string;
+  test_id: string;
+  test_title: string;
+  respondent_name: string | null;
+  cycle_tag: string;
+  submitted_at: string;
+  total_time_ms: number | null;
+  validity_flag: string | null;
+  anchor_engine: string | null;
+  anchor_confidence: number | null;
+  summary_text: string | null;
+  risk_flags: string[];
+  score_metrics: Record<string, number>;
+}
+
+export interface ResponseDetail {
+  response_id: string;
+  test: {
+    id: string;
+    title: string;
+    description: string | null;
+    real_focus: string | null;
+    cycle: string;
+  };
+  respondent_name: string | null;
+  cycle_tag: string;
+  submitted_at: string;
+  total_time_ms: number | null;
+  median_time_per_question_ms: number | null;
+  rushed_share: number | null;
+  validity_flag: string | null;
+  answers: {
+    code: string;
+    display_text: string | null;
+    value: unknown;
+    text: string | null;
+    time_spent_ms: number | null;
+    revisions: number | null;
+  }[];
+  analysis: {
+    score_metrics: Record<string, number>;
+    risk_flags: string[];
+    recommendations: string[];
+    summary_text: string;
+    employer_image: { keywords: string[]; one_sentence: string; sentiment: string } | null;
+    anchor_engine: string | null;
+    anchor_engine_confidence: number | null;
+    anchor_engine_reasoning: string | null;
+    prompt_version: string;
+    ai_model: string;
+  } | null;
+}
+
 export interface DashboardPayload {
   viewer: { id: string; role: UserRole; full_name: string | null };
   company: string;
   cycle_tag: string;
   respondents: number;
+  company_phase: CompanyPhase;
   company_metrics: CompanyMetrics;
   by_department: Record<string, CompanyMetrics>;
   by_site: Record<string, CompanyMetrics>;

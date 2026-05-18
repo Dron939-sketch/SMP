@@ -3,6 +3,8 @@ import type {
   AssistantGreeting,
   AssistantMessage,
   DashboardPayload,
+  ResponseDetail,
+  ResponseListItem,
   ShareLink,
   Test,
   User,
@@ -86,6 +88,20 @@ export const dashboard = {
     ),
   refreshAdvisor: () =>
     request<unknown>(`/api/dashboard/advisor/refresh`, { method: "POST" }),
+};
+
+export const reports = {
+  list: (params: { test_id?: string; cycle_tag?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.test_id) q.set("test_id", params.test_id);
+    if (params.cycle_tag) q.set("cycle_tag", params.cycle_tag);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return request<{ total: number; items: ResponseListItem[] }>(
+      `/api/reports/responses${qs}`
+    );
+  },
+  get: (id: string) =>
+    request<ResponseDetail>(`/api/reports/responses/${id}`),
 };
 
 export const assistant = {
