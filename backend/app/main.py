@@ -6,7 +6,16 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import ai, assistant, auth, dashboard, health, prompts, tests
+from app.api.routes import (
+    admin,
+    ai,
+    assistant,
+    auth,
+    dashboard,
+    health,
+    prompts,
+    tests,
+)
 from app.config import get_settings
 from app.core.logging import configure_logging
 from app.services.prompt_loader import get_prompt_loader
@@ -74,3 +83,4 @@ app.include_router(ai.router)
 app.include_router(prompts.router)
 app.include_router(dashboard.router)
 app.include_router(assistant.router)
+app.include_router(admin.router)

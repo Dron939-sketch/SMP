@@ -34,9 +34,9 @@ export function MetricCard({
         }}
       />
       <div className="relative">
-        <div className="flex items-center justify-between mb-2">
-          <div className="label truncate">{label}</div>
-          {icon && <div className="text-slate-500 text-sm">{icon}</div>}
+        <div className="flex items-start justify-between gap-2 mb-2 min-h-[2.4em]">
+          <div className="label leading-snug break-words">{label}</div>
+          {icon && <div className="text-slate-500 text-sm shrink-0">{icon}</div>}
         </div>
         <div className="flex items-baseline gap-1.5">
           <span className={`kpi-value text-3xl sm:text-4xl font-semibold ${valueClass}`}>
