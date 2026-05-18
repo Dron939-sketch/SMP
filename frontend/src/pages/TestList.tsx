@@ -159,7 +159,7 @@ function TestCard({
     <article className="card flex flex-col">
       <div className="flex items-start justify-between gap-2 mb-1">
         <h2 className="font-semibold text-lg">{t.title}</h2>
-        <span className="chip bg-white/5">{t.cycle}</span>
+        <span className="chip bg-white/5">{cycleLabel(t.cycle)}</span>
       </div>
 
       {/* Видимая цель (что говорим сотрудникам) */}
@@ -311,6 +311,17 @@ function ShareRow({
       </div>
     </div>
   );
+}
+
+function cycleLabel(cycle: string): string {
+  const map: Record<string, string> = {
+    weekly: "еженедельно",
+    monthly: "ежемесячно",
+    quarterly: "ежеквартально",
+    yearly: "ежегодно",
+    daily: "ежедневно",
+  };
+  return map[cycle] || cycle;
 }
 
 function flash(msg: string) {
