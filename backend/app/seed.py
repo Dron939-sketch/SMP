@@ -1,0 +1,179 @@
+"""Инициализация БД: схема + базовые данные.
+
+Запуск: `python -m app.seed` из контейнера backend (или `make seed`).
+
+Что создаём:
+  - админ;
+  - замполит Зорин Илья (роль POLITICAL_OFFICER, компания СпецМонтажПроект);
+  - один менеджер и десяток тестовых сотрудников по разным участкам;
+  - 16 замаскированных вопросов из question-bank/camouflaged_questions.yaml;
+  - 5 шаблонов тестов из question-bank/tests.yaml.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+
+import structlog
+import yaml
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from app.config import get_settings
+from app.core.security import hash_password
+from app.database import Base, SessionLocal, engine
+from app.models.test import Question, QuestionType, Test
+from app.models.user import User, UserRole
+
+logger = structlog.get_logger(__name__)
+
+
+def _question_bank_root() -> Path:
+    here = Path(__file__).resolve().parent
+    candidates = [
+        Path("/app/question-bank"),
+        here.parent.parent / "question-bank",
+        Path.cwd() / "question-bank",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    raise FileNotFoundError("question-bank not found")
+
+
+async def _create_schema(eng: AsyncEngine) -> None:
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def _ensure_user(
+    session, *, email, password, role, full_name, department=None, site=None, position=None
+):
+    existing = (
+        await session.execute(select(User).where(User.email == email))
+    ).scalar_one_or_none()
+    if existing:
+        return existing
+    user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        role=role,
+        full_name=full_name,
+        department=department,
+        site=site,
+        position=position,
+        consent_given=True,
+        is_active=True,
+    )
+    session.add(user)
+    await session.flush()
+    return user
+
+
+async def _seed_users(session) -> None:
+    await _ensure_user(
+        session,
+        email="admin@smp.local",
+        password="admin12345",
+        role=UserRole.ADMIN,
+        full_name="Системный администратор",
+    )
+    await _ensure_user(
+        session,
+        email="zorin@smp.local",
+        password="zorin12345",
+        role=UserRole.POLITICAL_OFFICER,
+        full_name="Илья Зорин",
+        position="Замполит",
+    )
+    await _ensure_user(
+        session,
+        email="manager@smp.local",
+        password="manager12345",
+        role=UserRole.MANAGER,
+        full_name="Сергей Иванов",
+        department="СМР",
+        site="Участок №2",
+        position="Начальник участка",
+    )
+    sample_employees = [
+        ("e1@smp.local", "Михаил Петров", "СМР", "Участок №1", "Прораб"),
+        ("e2@smp.local", "Анна Смирнова", "ПТО", "Офис",        "Инженер ПТО"),
+        ("e3@smp.local", "Дмитрий Ким",   "СМР", "Участок №2", "Мастер"),
+        ("e4@smp.local", "Ольга Новикова","HR",  "Офис",        "Специалист HR"),
+        ("e5@smp.local", "Алексей Грин",  "ОТиТБ","Участок №1","Инженер ОТ"),
+        ("e6@smp.local", "Иван Соколов",  "СМР", "Участок №3", "Бригадир"),
+    ]
+    for email, name, dept, site, pos in sample_employees:
+        await _ensure_user(
+            session,
+            email=email,
+            password="employee123",
+            role=UserRole.EMPLOYEE,
+            full_name=name,
+            department=dept,
+            site=site,
+            position=pos,
+        )
+
+
+async def _seed_tests(session) -> None:
+    root = _question_bank_root()
+    bank = yaml.safe_load((root / "camouflaged_questions.yaml").read_text("utf-8"))
+    templates = yaml.safe_load((root / "tests.yaml").read_text("utf-8"))
+
+    bank_by_code = {q["code"]: q for q in bank["questions"]}
+
+    for tpl in templates["tests"]:
+        existing = (
+            await session.execute(select(Test).where(Test.title == tpl["title"]))
+        ).scalar_one_or_none()
+        if existing:
+            logger.info("seed.test.skip", title=tpl["title"])
+            continue
+
+        test = Test(
+            title=tpl["title"],
+            description=tpl.get("description"),
+            cycle=tpl.get("cycle", "monthly"),
+            time_limit_seconds=tpl.get("time_limit_seconds"),
+            is_active=True,
+        )
+        session.add(test)
+        await session.flush()
+
+        for idx, code in enumerate(tpl["question_codes"]):
+            src = bank_by_code.get(code)
+            if not src:
+                logger.warning("seed.test.unknown_code", code=code, test=tpl["title"])
+                continue
+            session.add(
+                Question(
+                    test_id=test.id,
+                    code=src["code"],
+                    display_text=src["display_text"],
+                    question_type=QuestionType(src["type"]),
+                    options={"choices": src["options"]} if src.get("options") else None,
+                    order_index=idx,
+                    is_required=True,
+                    hidden_metrics=src.get("hidden_metrics", {}),
+                    reverse_scored=src.get("reverse_scored", False),
+                )
+            )
+        logger.info("seed.test.created", title=tpl["title"])
+
+
+async def run() -> None:
+    settings = get_settings()
+    logger.info("seed.start", db=settings.database_url.split("@")[-1])
+    await _create_schema(engine)
+    async with SessionLocal() as session:
+        await _seed_users(session)
+        await _seed_tests(session)
+        await session.commit()
+    logger.info("seed.done")
+
+
+if __name__ == "__main__":
+    asyncio.run(run())

@@ -1,0 +1,33 @@
+version: "1.1"
+description: |
+  Расширенный mapping. Добавлены коды для anchor_pretender-сигналов:
+  Q_TEAM_CREDIT (присваивает ли заслуги), Q_BLAME_DIRECTION (куда
+  направляет вину), Q_SAFETY_REPORT (готовность сообщить о нарушении).
+metrics:
+  stress_index:        "0..5, 5 = очень высокий"
+  burnout_risk:        "0..5"
+  work_life_balance:   "0..5, 5 = отличный"
+  employer_brand:      "0..5"
+  leadership_trust:    "0..5"
+  safety_culture:      "0..5"
+  career_clarity:      "0..5"
+  team_cohesion:       "0..5"
+  loyalty_intent:      "0..5"
+  psychological_safety: "0..5"
+
+code_to_metric:
+  Q_BREAK_HABITS:     { stress_index: 0.6, work_life_balance: 0.4 }
+  Q_NIGHT_THOUGHTS:   { stress_index: 0.8, burnout_risk: 0.2 }
+  Q_FRIEND_PITCH:     { employer_brand: 0.8, loyalty_intent: 0.2 }
+  Q_NEW_IDEA_PATH:    { leadership_trust: 0.6, psychological_safety: 0.4 }
+  Q_SHIFT_RITUAL:     { safety_culture: 0.8 }
+  Q_GROW_NEXT_YEAR:   { career_clarity: 0.7 }
+  Q_HELP_SCENARIO:    { team_cohesion: 0.6, psychological_safety: 0.4 }
+  Q_LEAVE_TRIGGER:    { loyalty_intent: 0.8 }
+  Q_BRAND_KEYWORD:    { employer_brand: 0.5, leadership_trust: 0.5 }
+  Q_PRIDE_STORY:      { employer_brand: 0.7, team_cohesion: 0.3 }
+  Q_TEAM_CREDIT:      { team_cohesion: 0.5, psychological_safety: 0.5, anchor_signal: 0.7 }
+  Q_BLAME_DIRECTION:  { psychological_safety: 0.6, anchor_signal: 0.8 }
+  Q_SAFETY_REPORT:    { safety_culture: 0.7, leadership_trust: 0.3 }
+  Q_LATE_CALL:        { work_life_balance: 0.5, leadership_trust: 0.5 }
+  Q_RECOMMEND_FRIEND: { employer_brand: 0.6, loyalty_intent: 0.4 }

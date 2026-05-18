@@ -1,0 +1,28 @@
+version: "1.0"
+description: |
+  Маппинг кодов замаскированных вопросов на скрытые метрики и веса.
+  Используется ИИ-моделью для расчёта score_metrics.
+metrics:
+  stress_index:        "Уровень стресса 0..5 (5 = очень высокий)"
+  burnout_risk:        "Риск выгорания 0..5"
+  work_life_balance:   "Баланс работа/жизнь 0..5 (5 = отличный)"
+  employer_brand:      "Сила бренда работодателя 0..5"
+  leadership_trust:    "Доверие к руководству 0..5"
+  safety_culture:      "Культура охраны труда 0..5"
+  career_clarity:      "Понятность карьерного роста 0..5"
+  team_cohesion:       "Сплочённость команды 0..5"
+  loyalty_intent:      "Намерение остаться в компании 0..5"
+  psychological_safety: "Психологическая безопасность 0..5"
+
+# Не используется напрямую LLM, но даёт человеку привязку code → метрика.
+code_to_metric:
+  Q_BREAK_HABITS: { stress_index: 0.6, work_life_balance: 0.4 }
+  Q_NIGHT_THOUGHTS: { stress_index: 0.8, burnout_risk: 0.2 }
+  Q_FRIEND_PITCH: { employer_brand: 0.8, loyalty_intent: 0.2 }
+  Q_NEW_IDEA_PATH: { leadership_trust: 0.6, psychological_safety: 0.4 }
+  Q_SHIFT_RITUAL: { safety_culture: 0.8 }
+  Q_GROW_NEXT_YEAR: { career_clarity: 0.7 }
+  Q_HELP_SCENARIO: { team_cohesion: 0.6, psychological_safety: 0.4 }
+  Q_LEAVE_TRIGGER: { loyalty_intent: 0.8 }
+  Q_BRAND_KEYWORD: { employer_brand: 0.5, leadership_trust: 0.5 }
+  Q_PRIDE_STORY: { employer_brand: 0.7, team_cohesion: 0.3 }

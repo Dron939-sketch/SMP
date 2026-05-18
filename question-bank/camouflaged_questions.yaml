@@ -1,0 +1,140 @@
+# Банк замаскированных (проективных) вопросов.
+# Сотрудник видит только display_text; код и hidden_metrics доступны
+# только админу/замполиту и используются ИИ для восстановления метрик.
+#
+# reverse_scored=true означает, что чем выше ответ по Лайкерту,
+# тем НИЖЕ скрытая метрика. Используется для контр-вопросов.
+
+questions:
+
+  # ---------- Стресс / выгорание ----------
+  - code: Q_BREAK_HABITS
+    display_text: "Как часто вы по вечерам мысленно «доигрываете» рабочие разговоры?"
+    type: likert_5
+    hidden_metrics: { stress_index: 0.6, work_life_balance: 0.4 }
+    reverse_scored: false
+
+  - code: Q_NIGHT_THOUGHTS
+    display_text: "Бывает ли, что мысли о работе всплывают в первые 10 минут после пробуждения?"
+    type: likert_5
+    hidden_metrics: { stress_index: 0.8, burnout_risk: 0.2 }
+    reverse_scored: false
+
+  - code: Q_LATE_CALL
+    display_text: "Если в 22:00 звонит непосредственный руководитель — какова первая мысль?"
+    type: single_choice
+    options:
+      - "Что-то срочное на объекте, надо помочь"
+      - "Странно, но возьму трубку"
+      - "Раздражение, но отвечу"
+      - "Не возьму, перезвоню утром"
+    hidden_metrics: { work_life_balance: 0.5, leadership_trust: 0.5 }
+
+  # ---------- Образ работодателя ----------
+  - code: Q_FRIEND_PITCH
+    display_text: "Если друг спросит, чем занимается ваша компания — что первое скажете?"
+    type: open_text
+    hidden_metrics: { employer_brand: 0.8, loyalty_intent: 0.2 }
+
+  - code: Q_BRAND_KEYWORD
+    display_text: "Выберите 3 слова, которыми вы бы описали компанию в нерабочей беседе."
+    type: multiple_choice
+    options:
+      - "стабильная"
+      - "честная"
+      - "требовательная"
+      - "семейная"
+      - "консервативная"
+      - "перспективная"
+      - "хаотичная"
+      - "формальная"
+      - "уважительная"
+      - "холодная"
+    hidden_metrics: { employer_brand: 0.5, leadership_trust: 0.5 }
+
+  - code: Q_RECOMMEND_FRIEND
+    display_text: "Насколько вероятно, что вы порекомендуете компанию знакомому-строителю?"
+    type: likert_5
+    hidden_metrics: { employer_brand: 0.6, loyalty_intent: 0.4 }
+
+  - code: Q_PRIDE_STORY
+    display_text: "Расскажите коротко про любой случай за последний квартал, который хочется пересказать."
+    type: open_text
+    hidden_metrics: { employer_brand: 0.7, team_cohesion: 0.3 }
+
+  # ---------- Доверие и психологическая безопасность ----------
+  - code: Q_NEW_IDEA_PATH
+    display_text: "У вас появилась рабочая идея. Кому расскажете первым?"
+    type: single_choice
+    options:
+      - "Непосредственному руководителю"
+      - "Кому-то из коллег"
+      - "Запишу, чтобы не забыть"
+      - "Никому, идея «не зайдёт»"
+    hidden_metrics: { leadership_trust: 0.6, psychological_safety: 0.4 }
+
+  - code: Q_BLAME_DIRECTION
+    display_text: "Если на объекте срыв сроков — куда чаще всего смотрят при разборе?"
+    type: single_choice
+    options:
+      - "Ищут системную причину"
+      - "Спрашивают мнение исполнителей"
+      - "Назначают ответственного"
+      - "Молча двигают сроки"
+    hidden_metrics: { psychological_safety: 0.6, leadership_trust: 0.4 }
+
+  - code: Q_SAFETY_REPORT
+    display_text: "Заметили мелкое нарушение ОТ у соседней бригады. Скорее всего вы…"
+    type: single_choice
+    options:
+      - "Скажу бригадиру лично"
+      - "Сообщу через приложение/мастера"
+      - "Отмечу про себя, но промолчу"
+      - "Не моё дело"
+    hidden_metrics: { safety_culture: 0.7, leadership_trust: 0.3 }
+
+  # ---------- Команда ----------
+  - code: Q_HELP_SCENARIO
+    display_text: "Новичок в бригаде путается с документами. Что обычно происходит?"
+    type: single_choice
+    options:
+      - "Кто-то сразу садится и объясняет"
+      - "Отправляют к мастеру"
+      - "Шутят, но в итоге показывают"
+      - "Каждый занят своим"
+    hidden_metrics: { team_cohesion: 0.6, psychological_safety: 0.4 }
+
+  - code: Q_TEAM_CREDIT
+    display_text: "Когда команда сдала тяжёлый этап — как обычно распределяется заслуга?"
+    type: single_choice
+    options:
+      - "Отмечают всех поимённо"
+      - "Хвалят бригаду в целом"
+      - "Хвалят бригадира"
+      - "Никто особо не отмечает"
+    hidden_metrics: { team_cohesion: 0.5, psychological_safety: 0.5 }
+
+  # ---------- Безопасность объекта ----------
+  - code: Q_SHIFT_RITUAL
+    display_text: "Опишите, что вы обычно проверяете в первые 5 минут на объекте."
+    type: open_text
+    hidden_metrics: { safety_culture: 0.8 }
+
+  # ---------- Карьера ----------
+  - code: Q_GROW_NEXT_YEAR
+    display_text: "Представьте себя в этой же компании через год. Что в работе изменится?"
+    type: open_text
+    hidden_metrics: { career_clarity: 0.7, loyalty_intent: 0.3 }
+
+  # ---------- Лояльность ----------
+  - code: Q_LEAVE_TRIGGER
+    display_text: "Что должно произойти, чтобы вы всерьёз начали искать другую работу?"
+    type: open_text
+    hidden_metrics: { loyalty_intent: 0.8 }
+
+  # ---------- Контр-вопросы (reverse scored) ----------
+  - code: Q_BRIGHT_FUTURE_REVERSE
+    display_text: "Иногда хочется, чтобы кто-то решил за меня, что делать на работе."
+    type: likert_5
+    hidden_metrics: { career_clarity: 0.5, psychological_safety: 0.5 }
+    reverse_scored: true

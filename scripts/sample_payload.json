@@ -1,0 +1,17 @@
+{
+  "employee_id": "00000000-0000-0000-0000-000000000002",
+  "role": "employee",
+  "department": "СМР",
+  "site": "Участок №2",
+  "cycle_tag": "2026-W20",
+  "answers": [
+    {"question_id": "q1", "code": "Q_BREAK_HABITS", "value": 4},
+    {"question_id": "q2", "code": "Q_NIGHT_THOUGHTS", "value": 5},
+    {"question_id": "q3", "code": "Q_LATE_CALL", "value": "Раздражение, но отвечу"},
+    {"question_id": "q4", "code": "Q_FRIEND_PITCH", "value": null, "text": "Стабильная компания, платят вовремя, но прорабы жёсткие"},
+    {"question_id": "q5", "code": "Q_NEW_IDEA_PATH", "value": "Никому, идея «не зайдёт»"},
+    {"question_id": "q6", "code": "Q_BLAME_DIRECTION", "value": "Назначают ответственного"},
+    {"question_id": "q7", "code": "Q_SHIFT_RITUAL", "value": null, "text": "Проверяю СИЗ, состояние лесов, наряд-допуск"},
+    {"question_id": "q8", "code": "Q_RECOMMEND_FRIEND", "value": 5}
+  ]
+}
