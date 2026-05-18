@@ -206,6 +206,16 @@ async def _seed_users(session) -> None:
         )
 
 
+def _expected_test_titles() -> list[str]:
+    """Список title тестов из tests.yaml — для self-heal сравнения с БД."""
+    try:
+        root = _question_bank_root()
+        templates = yaml.safe_load((root / "tests.yaml").read_text("utf-8"))
+        return [t["title"] for t in templates.get("tests", [])]
+    except Exception:
+        return []
+
+
 async def _seed_tests(session) -> None:
     root = _question_bank_root()
     bank = yaml.safe_load((root / "camouflaged_questions.yaml").read_text("utf-8"))
