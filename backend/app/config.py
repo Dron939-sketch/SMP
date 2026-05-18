@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     admin_token: str = ""
     access_token_ttl_minutes: int = 30
     refresh_token_ttl_days: int = 14
-    max_token: int = 2048
+    # MAX_TOKEN в окружении хостинга используется как auth-токен (строка),
+    # поэтому наш «макс. токенов LLM» — отдельный alias LLM_MAX_TOKENS.
+    llm_max_tokens: int = Field(default=2048, alias="LLM_MAX_TOKENS")
 
     database_url: str = "postgresql+psycopg://buildpulse:buildpulse@postgres:5432/buildpulse"
     redis_url: str = "redis://redis:6379/0"
