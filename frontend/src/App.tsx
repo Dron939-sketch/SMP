@@ -25,10 +25,10 @@ function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-smp-accent grid place-items-center text-slate-900 font-bold">
-              BP
+              П
             </div>
             <div>
-              <div className="font-semibold leading-tight">BuildPulse</div>
+              <div className="font-semibold leading-tight">Пульсометр</div>
               <div className="text-xs text-slate-400">СпецМонтажПроект</div>
             </div>
           </div>

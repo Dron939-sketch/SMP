@@ -58,7 +58,7 @@ services:
       - key: ALERT_SAFETY_THRESHOLD
         value: "3.0"
       - key: VK_GROUP_DOMAIN
-        value: specmontazhproekt
+        value: smp2025house
       # Секреты — задаются в Render UI (sync:false → не лежат в репо)
       - key: SECRET_KEY
         generateValue: true

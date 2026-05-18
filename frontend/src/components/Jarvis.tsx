@@ -24,14 +24,33 @@ export function Jarvis() {
   const greetedRef = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
     assistant.greeting().then((g) => {
+      if (cancelled) return;
       setGreeting(g);
-      if (!greetedRef.current) {
+      setMessages([{ role: "assistant", content: g.text }]);
+
+      // Авто-приветствие через 5 секунд после загрузки дашборда +
+      // вежливый запрос разрешения на микрофон сразу после.
+      window.setTimeout(async () => {
+        if (cancelled || greetedRef.current) return;
         greetedRef.current = true;
-        setMessages([{ role: "assistant", content: g.text }]);
         if (!muted) speak(g.text, g);
-      }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Сразу освобождаем — нам важно только получить разрешение,
+          // настоящий запис стартует только по нажатию микрофона.
+          stream.getTracks().forEach((t) => t.stop());
+        } catch {
+          // пользователь отказал — голосовой ввод всё равно можно
+          // включить позже, кнопка останется кликабельной.
+        }
+      }, 5000);
     });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
