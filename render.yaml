@@ -5,7 +5,7 @@
 
 databases:
   - name: buildpulse-db
-    plan: free
+    plan: basic-256mb
     region: oregon
     databaseName: buildpulse
     user: buildpulse
@@ -14,7 +14,7 @@ databases:
 services:
   - type: redis
     name: buildpulse-redis
-    plan: free
+    plan: starter
     region: oregon
     ipAllowList: []
     maxmemoryPolicy: allkeys-lru
@@ -23,7 +23,7 @@ services:
     name: buildpulse-backend
     runtime: docker
     region: oregon
-    plan: free
+    plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
