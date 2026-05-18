@@ -13,8 +13,10 @@ import {
   YAxis,
 } from "recharts";
 import { dashboard } from "../api/client";
+import { DashboardSkeleton } from "../components/DashboardSkeleton";
 import { GreetingPlayer } from "../components/GreetingPlayer";
 import { MetricCard } from "../components/MetricCard";
+import { TopInsight } from "../components/TopInsight";
 import type { DashboardPayload, User } from "../types";
 
 const ANCHOR_COLORS: Record<string, string> = {
@@ -44,7 +46,7 @@ export default function Dashboard({ user }: { user: User }) {
     return (
       <div className="card text-smp-crit">Не удалось загрузить дашборд: {err}</div>
     );
-  if (!data) return <div className="text-slate-400">Загрузка дашборда…</div>;
+  if (!data) return <DashboardSkeleton />;
 
   const cm = data.company_metrics;
   const deptRows = Object.entries(data.by_department).map(([dept, m]) => ({
@@ -99,6 +101,8 @@ export default function Dashboard({ user }: { user: User }) {
             </div>
           </div>
         </header>
+
+        <TopInsight data={data} />
 
         {/* О системе — цели и возможности приложения */}
         <section className="card">
