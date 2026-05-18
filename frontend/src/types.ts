@@ -128,6 +128,13 @@ export interface VKSnapshot {
   };
 }
 
+export interface TestStats {
+  test_id: string;
+  title: string;
+  submissions: number;
+  unique_respondents: number;
+}
+
 export interface DashboardPayload {
   viewer: { id: string; role: UserRole; full_name: string | null };
   company: string;
@@ -142,6 +149,9 @@ export interface DashboardPayload {
   alerts_summary: [string, number][];
   vk: VKSnapshot;
   advisor: AdvisorOutput | null;
+  test_stats: TestStats[];
+  total_submissions: number;
+  total_unique_respondents: number;
 }
 
 export interface AssistantGreeting {

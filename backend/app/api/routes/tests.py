@@ -219,6 +219,7 @@ async def _submit(
         cycle_tag=payload.cycle_tag,
         answers=answers_payload,
         answers_hash=answers_hash,
+        respondent_name=payload.respondent_name.strip(),
         total_time_ms=payload.total_time_ms,
         median_time_per_question_ms=timing["median_time_per_question_ms"],
         rushed_share=timing["rushed_share"],

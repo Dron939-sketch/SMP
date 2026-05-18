@@ -7,6 +7,7 @@ interface Props {
   cycleTag: string;
   onSubmit: (payload: {
     cycle_tag: string;
+    respondent_name: string;
     answers: {
       question_id: string;
       code: string;
@@ -29,6 +30,8 @@ interface Props {
  *   - паузы (>30с без взаимодействия) не засчитываются.
  */
 export function TestForm({ test, cycleTag, onSubmit }: Props) {
+  const [respondentName, setRespondentName] = useState("");
+  const [stage, setStage] = useState<"name" | "questions">("name");
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [perQuestionMs, setPerQuestionMs] = useState<Record<string, number>>({});
   const [revisions, setRevisions] = useState<Record<string, number>>({});
@@ -94,6 +97,7 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     const totalMs = finished.getTime() - startedAtRef.current.getTime();
     const payload = {
       cycle_tag: cycleTag,
+      respondent_name: respondentName.trim(),
       total_time_ms: totalMs,
       client_started_at: startedAtRef.current.toISOString(),
       client_finished_at: finished.toISOString(),
@@ -116,6 +120,43 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
       setBusy(false);
     }
   };
+
+  if (stage === "name") {
+    const valid = respondentName.trim().length >= 2;
+    return (
+      <form
+        className="card max-w-lg mx-auto space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) {
+            startedAtRef.current = new Date();
+            lastTickRef.current = Date.now();
+            lastActiveRef.current = Date.now();
+            setStage("questions");
+          }
+        }}
+      >
+        <div>
+          <div className="label">Перед началом</div>
+          <h2 className="text-xl font-semibold mt-1">Как вас зовут?</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Фамилия Имя Отчество — нужно для учёта прохождения.
+            Линейные руководители имена не видят, только агрегаты.
+          </p>
+        </div>
+        <input
+          autoFocus
+          value={respondentName}
+          onChange={(e) => setRespondentName(e.target.value)}
+          placeholder="Иванов Иван Иванович"
+          className="w-full bg-black/40 rounded-xl px-4 py-3 border border-white/10"
+        />
+        <button type="submit" className="btn-primary w-full" disabled={!valid}>
+          Начать тест →
+        </button>
+      </form>
+    );
+  }
 
   if (!activeQ) return null;
 

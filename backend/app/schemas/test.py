@@ -57,6 +57,10 @@ class AnswerSubmit(BaseModel):
 class TestSubmitRequest(BaseModel):
     cycle_tag: str = Field(min_length=1, max_length=32)
     answers: list[AnswerSubmit] = Field(min_length=1)
+    # ФИО респондента — заполняет сам сотрудник на старте теста.
+    # Видно только админу/замполиту в админ-вьюхе ответов, в дашборд-
+    # агрегатах не используется (анонимизация).
+    respondent_name: str = Field(min_length=2, max_length=255)
     total_time_ms: int | None = Field(default=None, ge=0, le=4 * 3600 * 1000)
     client_started_at: datetime | None = None
     client_finished_at: datetime | None = None
