@@ -8,7 +8,9 @@ import type {
   User,
 } from "../types";
 
-const BASE = ""; // vite proxy handles /api/*
+// dev: Vite-прокси перенаправляет /api/* на backend (см. vite.config.ts);
+// prod: подставляется VITE_API_URL (например https://buildpulse-backend.onrender.com).
+const BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 let _token: string | null = localStorage.getItem("bp_token");
 let _refresh: string | null = localStorage.getItem("bp_refresh");
