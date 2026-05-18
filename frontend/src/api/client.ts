@@ -86,8 +86,6 @@ export const dashboard = {
     ),
   refreshAdvisor: () =>
     request<unknown>(`/api/dashboard/advisor/refresh`, { method: "POST" }),
-  exportXlsx: (cycle_tag?: string) =>
-    `/api/dashboard/export/xlsx${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`,
 };
 
 export const assistant = {
