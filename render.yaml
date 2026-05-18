@@ -1,0 +1,160 @@
+# Render Blueprint для BuildPulse.
+# Чтобы развернуть: в Render → New → Blueprint → подключить этот репо.
+# Бэкенд собирается из backend/Dockerfile, фронт — статикой из frontend/dist,
+# Postgres и Redis — managed-сервисы Render.
+
+databases:
+  - name: buildpulse-db
+    plan: free
+    region: oregon
+    databaseName: buildpulse
+    user: buildpulse
+    postgresMajorVersion: 16
+
+services:
+  - type: redis
+    name: buildpulse-redis
+    plan: free
+    region: oregon
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+  - type: web
+    name: buildpulse-backend
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: APP_NAME
+        value: BuildPulse
+      - key: APP_VERSION
+        value: 0.1.0
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      - key: PROMPTS_DIR
+        value: /app/ai-prompts
+      - key: PROMPTS_ACTIVE_VERSION
+        value: v1.1
+      - key: PROMPTS_HOT_RELOAD
+        value: "false"
+      - key: AI_PROVIDER
+        value: deepseek
+      - key: AI_MODEL
+        value: deepseek-chat
+      - key: ASSISTANT_MODEL
+        value: deepseek-chat
+      - key: ADVISOR_MODEL
+        value: deepseek-chat
+      - key: ALERT_STRESS_THRESHOLD
+        value: "4.2"
+      - key: ALERT_SAFETY_THRESHOLD
+        value: "3.0"
+      - key: VK_GROUP_DOMAIN
+        value: specmontazhproekt
+      # Секреты — задаются в Render UI (sync:false → не лежат в репо)
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: FISH_AUDIO_API_KEY
+        sync: false
+      - key: FISH_AUDIO_VOICE_ID
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: HUME_API_KEY
+        sync: false
+      - key: VK_SERVICE_TOKEN
+        sync: false
+      - key: VK_USER_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: YANDEX_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: EMAIL_SMTP_HOST
+        sync: false
+      - key: EMAIL_SMTP_PORT
+        sync: false
+      - key: EMAIL_SMTP_USER
+        sync: false
+      - key: EMAIL_SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_CONTACT
+        sync: false
+      # Database/Redis URL подставляются Render автоматически
+      - key: DATABASE_URL
+        fromDatabase:
+          name: buildpulse-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: buildpulse-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: buildpulse-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: buildpulse-redis
+          type: redis
+          property: connectionString
+      # Фронт после деплоя получит свой URL — добавьте его в CORS
+      - key: CORS_ORIGINS
+        value: https://buildpulse-frontend.onrender.com
+
+  - type: web
+    name: buildpulse-frontend
+    runtime: static
+    region: oregon
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    pullRequestPreviewsEnabled: false
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_URL
+        value: https://buildpulse-backend.onrender.com
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://buildpulse-backend.onrender.com/api/:splat
+      - type: rewrite
+        source: /*
+        destination: /index.html
