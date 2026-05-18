@@ -70,8 +70,8 @@ export default function TestList({ user }: { user: User }) {
           <span className="text-slate-200">Видимая цель</span> — то, что
           говорим сотрудникам.{" "}
           <span className="text-smp-accent">Истинная цель</span> — что
-          на самом деле замеряет ИИ. Ссылку можно сразу отправить в
-          Telegram / WhatsApp / Max или скопировать.
+          на самом деле замеряет ИИ. Создайте ссылку и скопируйте её —
+          отправляйте сотрудникам любым удобным способом.
         </p>
       </header>
 
@@ -219,47 +219,13 @@ function TestCard({
   );
 }
 
-function ShareRow({
-  link,
-  testTitle,
-}: {
-  link: ShareLink;
-  testTitle: string;
-}) {
-  const text = `Привет! Пройди короткий опрос «${testTitle}» от СпецМонтажПроект — это анонимно и поможет улучшить рабочие условия:`;
-  const fullText = `${text} ${link.share_url}`;
-
+function ShareRow({ link }: { link: ShareLink; testTitle: string }) {
   const copy = () => {
     navigator.clipboard?.writeText(link.share_url).then(
       () => flash("Ссылка скопирована"),
       () => prompt("Скопируйте вручную:", link.share_url)
     );
   };
-
-  const nativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: testTitle,
-          text,
-          url: link.share_url,
-        });
-      } catch {
-        /* пользователь отменил — ок */
-      }
-    } else {
-      copy();
-    }
-  };
-
-  const tgUrl =
-    "https://t.me/share/url?url=" +
-    encodeURIComponent(link.share_url) +
-    "&text=" +
-    encodeURIComponent(text);
-  const waUrl = "https://wa.me/?text=" + encodeURIComponent(fullText);
-  const maxUrl =
-    "https://max.ru/share?url=" + encodeURIComponent(link.share_url);
 
   return (
     <div className="space-y-2 text-xs">
@@ -273,33 +239,6 @@ function ShareRow({
         <button className="btn-ghost text-xs" onClick={copy}>
           📋 Копировать
         </button>
-        <button className="btn-ghost text-xs" onClick={nativeShare}>
-          ↗ Поделиться
-        </button>
-        <a
-          className="btn-ghost text-xs"
-          href={tgUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Telegram
-        </a>
-        <a
-          className="btn-ghost text-xs"
-          href={waUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          WhatsApp
-        </a>
-        <a
-          className="btn-ghost text-xs"
-          href={maxUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Max
-        </a>
         <a
           className="btn-ghost text-xs"
           href={link.share_url}
