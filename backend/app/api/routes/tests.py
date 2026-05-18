@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user, get_optional_user, require_roles
+from app.api.deps import get_optional_user, require_roles
 from app.config import get_settings
 from app.database import get_db
 from app.models.analysis import AnalysisResult
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/tests", tags=["tests"])
 @router.get("", response_model=list[TestRead])
 async def list_tests(
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
     stmt = (
         select(Test)
@@ -51,7 +51,7 @@ async def list_tests(
 async def get_test(
     test_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
     test = (
         await db.execute(
@@ -289,10 +289,10 @@ async def submit_shared(
     token: str,
     payload: TestSubmitRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
-    """Сабмит по shared-ссылке. Пользователь всё равно должен быть авторизован
-    (иначе нечем «привязать» ответы к траектории), но передаёт `token`, что
+    """Сабмит по shared-ссылке. Логин не требуется (в демо-режиме
+    бэк подставит синтетического юзера), передаётся token что
     инкрементит счётчик использований ссылки."""
     link = (
         await db.execute(select(TestShareLink).where(TestShareLink.token == token))
