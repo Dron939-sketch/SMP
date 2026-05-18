@@ -14,6 +14,7 @@ from app.api.routes import (
     dashboard,
     health,
     prompts,
+    reports,
     tests,
 )
 from app.config import get_settings
@@ -84,3 +85,4 @@ app.include_router(prompts.router)
 app.include_router(dashboard.router)
 app.include_router(assistant.router)
 app.include_router(admin.router)
+app.include_router(reports.router)

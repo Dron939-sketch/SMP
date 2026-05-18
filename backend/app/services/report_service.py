@@ -42,6 +42,66 @@ def _mean(values: list[float]) -> float:
     return round(sum(values) / len(values), 2) if values else 0.0
 
 
+def _company_phase(
+    company_metrics: dict[str, float],
+    anchor_counter: Counter[str],
+) -> dict[str, Any]:
+    """Сводная «фаза компании»: разбитие / среднее / стагнация.
+
+    Эвристика:
+      - engines_share — доля «двигателей» среди классифицированных;
+      - pretenders_share — доля «якорей под маской двигателей»;
+      - composite — среднее ключевых позитивных метрик.
+
+    Пороги выбраны мягко: при пустой/малой выборке падаем в «среднее».
+    """
+    total_classified = sum(anchor_counter.values())
+    engines = anchor_counter.get("engine", 0)
+    anchors = anchor_counter.get("anchor", 0) + anchor_counter.get("anchor_pretender", 0)
+    engines_share = engines / total_classified if total_classified else 0.0
+    anchors_share = anchors / total_classified if total_classified else 0.0
+
+    positive = (
+        company_metrics.get("employer_brand", 0)
+        + company_metrics.get("leadership_trust", 0)
+        + company_metrics.get("loyalty_intent", 0)
+        + company_metrics.get("team_cohesion", 0)
+    ) / 4 if company_metrics else 0.0
+
+    if total_classified == 0:
+        phase = "среднее"
+        reason = "Данных пока недостаточно — собираем."
+    elif engines_share >= 0.45 and positive >= 3.8 and anchors_share <= 0.15:
+        phase = "разбитие"
+        reason = (
+            f"Двигателей {round(engines_share * 100)}%, "
+            f"якорей {round(anchors_share * 100)}%, "
+            f"среднее по позитивным шкалам {positive:.1f}/5."
+        )
+    elif anchors_share >= 0.35 or positive < 3.0:
+        phase = "стагнация"
+        reason = (
+            f"Якорей {round(anchors_share * 100)}%, "
+            f"среднее по позитивным шкалам {positive:.1f}/5. "
+            "Команда теряет темп."
+        )
+    else:
+        phase = "среднее"
+        reason = (
+            f"Двигателей {round(engines_share * 100)}%, "
+            f"якорей {round(anchors_share * 100)}%, "
+            f"среднее по позитивным шкалам {positive:.1f}/5."
+        )
+
+    return {
+        "phase": phase,
+        "reason": reason,
+        "engines_share": round(engines_share, 2),
+        "anchors_share": round(anchors_share, 2),
+        "composite_positive": round(positive, 2),
+    }
+
+
 async def build_dashboard_payload(
     db: AsyncSession, *, cycle_tag: str | None = None
 ) -> dict[str, Any]:
@@ -146,10 +206,14 @@ async def build_dashboard_payload(
                 }
             )
 
+    company_metrics = {k: _mean(v) for k, v in totals.items()}
+    phase = _company_phase(company_metrics, anchor_counter)
+
     return {
         "cycle_tag": cycle_tag or "all",
         "respondents": len(rows),
-        "company_metrics": {k: _mean(v) for k, v in totals.items()},
+        "company_phase": phase,
+        "company_metrics": company_metrics,
         "by_department": {
             d: {k: _mean(v) for k, v in metrics.items()}
             for d, metrics in by_department.items()
