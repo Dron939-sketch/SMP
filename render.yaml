@@ -133,7 +133,6 @@ services:
   - type: web
     name: buildpulse-frontend
     runtime: static
-    region: oregon
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: frontend/dist
     pullRequestPreviewsEnabled: false
