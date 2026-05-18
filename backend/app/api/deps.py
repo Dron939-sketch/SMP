@@ -36,9 +36,43 @@ async def get_current_user(
 
 
 def require_roles(*roles: UserRole):
-    async def _check(user: Annotated[User, Depends(get_current_user)]) -> User:
+    async def _check(user: Annotated[User, Depends(get_optional_user)]) -> User:
         if user.role not in roles:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "forbidden")
         return user
 
     return _check
+
+
+# Демо-режим: если токена нет/невалидный — возвращаем синтетического
+# замполита, чтобы дашборд и ассистент работали без логина.
+_DEMO_USER_ID = uuid.UUID("00000000-0000-0000-0000-00000000beef")
+
+
+def _demo_user() -> User:
+    u = User(
+        id=_DEMO_USER_ID,
+        email="demo@smp.team",
+        hashed_password="",
+        role=UserRole.POLITICAL_OFFICER,
+        full_name="Демо Замполит",
+        position="Замполит",
+        consent_given=True,
+        is_active=True,
+    )
+    return u
+
+
+async def get_optional_user(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Depends(oauth2)],
+) -> User:
+    if not token:
+        return _demo_user()
+    try:
+        claims = decode_token(token)
+        uid = uuid.UUID(claims["sub"])
+    except (ValueError, KeyError):
+        return _demo_user()
+    user = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+    return user if user and user.is_active else _demo_user()
