@@ -108,3 +108,25 @@ tests:
       - Q_GROW_NEXT_YEAR
       - Q_LEAVE_TRIGGER
       - Q_BRIGHT_FUTURE_REVERSE
+
+  - slug: high_potential
+    title: "Кадровый резерв: на кого делать ставку"
+    cover_story: |
+      Короткий опрос на тему рабочих привычек и подхода к новым
+      задачам. Поможет настроить программы обучения.
+    real_focus: |
+      Big Five: добросовестность (Conscientiousness) — лучший
+      предиктор результативности по мета-анализам Schmidt & Hunter,
+      и открытость новому (Openness) — предиктор обучаемости.
+      Плюс две шкалы Learning Agility (Korn Ferry). Итог: список
+      людей, на которых стоит делать ставку при кадровых решениях.
+    cycle: quarterly
+    time_limit_seconds: 600
+    question_codes:
+      - Q_BF_PLAN_AHEAD
+      - Q_BF_FOLLOW_THROUGH
+      - Q_BF_DEADLINE_HABITS
+      - Q_BF_NEW_TECH
+      - Q_BF_QUESTION_RULES
+      - Q_LA_AFTER_MISTAKE
+      - Q_LA_FEEDBACK_RESPONSE

@@ -22,19 +22,9 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full">
       <header className="border-b border-white/5 bg-smp-panel/70 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-smp-accent grid place-items-center text-slate-900 font-bold">
-              П
-            </div>
-            <div>
-              <div className="font-semibold leading-tight">Пульсометр</div>
-              <div className="text-xs text-slate-400">СпецМонтажПроект</div>
-            </div>
-          </div>
-          <div className="text-sm text-slate-300 text-right">
-            <div>{CURRENT_USER.full_name}</div>
-            <div className="text-xs text-slate-500">{CURRENT_USER.position}</div>
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
+          <div className="font-semibold leading-tight text-lg sm:text-xl">
+            СпецМонтажПроект
           </div>
         </div>
       </header>

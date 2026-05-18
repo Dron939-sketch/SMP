@@ -56,6 +56,11 @@ class ScoreMetrics(BaseModel):
     team_cohesion: float = Field(ge=0, le=5)
     loyalty_intent: float = Field(ge=0, le=5)
     psychological_safety: float = Field(ge=0, le=5)
+    # Big Five / Learning Agility — для теста «кадрового резерва».
+    # Опциональные, default 3.0 если в ответе их нет.
+    conscientiousness: float = Field(default=3.0, ge=0, le=5)
+    openness: float = Field(default=3.0, ge=0, le=5)
+    learning_agility: float = Field(default=3.0, ge=0, le=5)
 
 
 class AIAnalysisResult(BaseModel):

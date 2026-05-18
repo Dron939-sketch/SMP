@@ -299,8 +299,7 @@ async def submit_test(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_optional_user)],
 ):
-    # Согласие проверяем только для реальных учёток (демо-юзер всегда true).
-    if user.id and not user.consent_given:
+    if not user.consent_given:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "consent required")
     test = (
         await db.execute(
