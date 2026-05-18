@@ -1,0 +1,15 @@
+version: "1.1"
+name: analyzer_user
+description: Шаблон пользовательской части для v1.1.
+template: |
+  Контекст респондента (без PII):
+    role={{role}}  department={{department}}  site={{site}}  cycle={{cycle_tag}}
+
+  Ответы. Каждая строка — один ответ. Код в квадратных скобках
+  соответствует скрытой метрике (см. metrics_mapping).
+
+  {{answers}}
+
+  Восстанови score_metrics (0..5), сформируй risk_flags, дай 2–5
+  управленческих рекомендаций для замполита. Отдельно классифицируй
+  anchor_engine и опиши employer_image. Верни ТОЛЬКО JSON.

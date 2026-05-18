@@ -1,0 +1,28 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "C4", "PIE", "SIM", "RUF"]
+ignore = [
+    "B008",
+    "E501",
+    "N818",
+    "UP017",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "RUF059",
+    "UP042",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --cov=app --cov-report=term-missing --cov-fail-under=0"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/workers/*", "app/main.py"]

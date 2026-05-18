@@ -1,0 +1,92 @@
+# Готовые шаблоны тестов для замполита СпецМонтажПроект.
+# Каждый шаблон фокусируется на своих метриках, но использует один и
+# тот же банк замаскированных вопросов. Замполит может выдавать ссылки
+# на разные тесты разным группам, и сравнивать результаты.
+
+tests:
+  - slug: pulse_short
+    title: "Пульс недели"
+    description: |
+      Короткий пятиминутный пульс. 6 вопросов. Замеряет ежедневный
+      стресс, баланс работа/жизнь и пульс настроения по объекту.
+      Подходит для еженедельной ротации.
+    cycle: weekly
+    time_limit_seconds: 600
+    question_codes:
+      - Q_BREAK_HABITS
+      - Q_NIGHT_THOUGHTS
+      - Q_LATE_CALL
+      - Q_HELP_SCENARIO
+      - Q_SHIFT_RITUAL
+      - Q_FRIEND_PITCH
+
+  - slug: brand_image
+    title: "Образ компании в голове"
+    description: |
+      Глубокий замер бренда работодателя. Открытые и проективные
+      вопросы. Подходит для квартального запуска, результат → виджет
+      «Образ компании» на дашборде.
+    cycle: quarterly
+    time_limit_seconds: 1200
+    question_codes:
+      - Q_FRIEND_PITCH
+      - Q_BRAND_KEYWORD
+      - Q_RECOMMEND_FRIEND
+      - Q_PRIDE_STORY
+      - Q_LEAVE_TRIGGER
+      - Q_GROW_NEXT_YEAR
+
+  - slug: safety_culture
+    title: "Культура безопасности на участке"
+    description: |
+      Тест по охране труда — без вопросов «вы соблюдаете СИЗ?», только
+      проективные сценарии. Низкий safety_culture → красный алерт.
+    cycle: monthly
+    time_limit_seconds: 900
+    question_codes:
+      - Q_SHIFT_RITUAL
+      - Q_SAFETY_REPORT
+      - Q_BLAME_DIRECTION
+      - Q_HELP_SCENARIO
+      - Q_NEW_IDEA_PATH
+
+  - slug: leadership_trust
+    title: "Связь с руководством"
+    description: |
+      Доверие к руководству и психологическая безопасность.
+      Главная цель — детектировать «якорей под маской двигателей».
+    cycle: monthly
+    time_limit_seconds: 900
+    question_codes:
+      - Q_NEW_IDEA_PATH
+      - Q_BLAME_DIRECTION
+      - Q_TEAM_CREDIT
+      - Q_LATE_CALL
+      - Q_RECOMMEND_FRIEND
+      - Q_BRAND_KEYWORD
+      - Q_BRIGHT_FUTURE_REVERSE
+
+  - slug: full_annual
+    title: "Годовой большой опрос"
+    description: |
+      Полный психометрический срез. Все 16 вопросов из банка.
+      Запускается раз в год, результат — базовая линия для трендов.
+    cycle: yearly
+    time_limit_seconds: 1800
+    question_codes:
+      - Q_BREAK_HABITS
+      - Q_NIGHT_THOUGHTS
+      - Q_LATE_CALL
+      - Q_FRIEND_PITCH
+      - Q_BRAND_KEYWORD
+      - Q_RECOMMEND_FRIEND
+      - Q_PRIDE_STORY
+      - Q_NEW_IDEA_PATH
+      - Q_BLAME_DIRECTION
+      - Q_SAFETY_REPORT
+      - Q_HELP_SCENARIO
+      - Q_TEAM_CREDIT
+      - Q_SHIFT_RITUAL
+      - Q_GROW_NEXT_YEAR
+      - Q_LEAVE_TRIGGER
+      - Q_BRIGHT_FUTURE_REVERSE

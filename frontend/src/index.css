@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  /* поддержка safe-area для iPhone */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* На мобильных шкала Лайкерта и кнопки должны быть с тач-таргетом ≥44px */
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card {
+  @apply bg-smp-panel rounded-2xl p-4 sm:p-5 border border-white/5 shadow-lg;
+}
+.label {
+  @apply text-xs uppercase tracking-wider text-slate-400;
+}
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 sm:py-2 font-medium transition select-none;
+  min-height: 44px;
+}
+.btn-primary {
+  @apply btn bg-smp-accent text-slate-900 hover:bg-cyan-300 active:bg-cyan-400;
+}
+.btn-ghost {
+  @apply btn bg-white/5 text-slate-100 hover:bg-white/10 active:bg-white/15;
+}
+.chip {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+/* Скроллбары — тонкие, ненавязчивые */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+@media (max-width: 640px) {
+  .hide-mobile { display: none; }
+}
