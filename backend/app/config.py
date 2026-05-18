@@ -60,7 +60,7 @@ class Settings(BaseSettings):
 
     vk_api_version: str = "5.199"
     vk_service_token: str = ""
-    vk_group_domain: str = "specmontazhproekt"
+    vk_group_domain: str = "smp2025house"
     vk_posts_limit: int = 30
     vk_cache_ttl_minutes: int = 30
 
