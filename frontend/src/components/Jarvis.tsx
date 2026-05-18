@@ -9,10 +9,45 @@ import type { AssistantGreeting, AssistantMessage } from "../types";
  *  - MediaRecorder + Deepgram (через /api/assistant/listen) — основной STT;
  *  - browser SpeechRecognition — fallback STT.
  */
+const HISTORY_KEY = "bp_jarvis_history";
+const HISTORY_LIMIT = 40;
+
+function loadHistory(): AssistantMessage[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter(
+        (m: unknown): m is AssistantMessage =>
+          typeof m === "object" &&
+          m !== null &&
+          "role" in m &&
+          "content" in m &&
+          (m as { role: string }).role !== undefined
+      )
+      .slice(-HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(messages: AssistantMessage[]) {
+  try {
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(messages.slice(-HISTORY_LIMIT))
+    );
+  } catch {
+    /* quota exceeded / private mode — игнорим */
+  }
+}
+
 export function Jarvis() {
   const [greeting, setGreeting] = useState<AssistantGreeting | null>(null);
   const [open, setOpen] = useState(true);
-  const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [messages, setMessages] = useState<AssistantMessage[]>(() => loadHistory());
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -23,15 +58,24 @@ export function Jarvis() {
   const chunksRef = useRef<Blob[]>([]);
   const greetedRef = useRef(false);
 
+  // Сохраняем историю в localStorage на каждое изменение messages.
+  useEffect(() => {
+    saveHistory(messages);
+  }, [messages]);
+
   useEffect(() => {
     let cancelled = false;
     assistant.greeting().then((g) => {
       if (cancelled) return;
       setGreeting(g);
-      setMessages([{ role: "assistant", content: g.text }]);
 
-      // Авто-приветствие звучит ОДИН раз навсегда — флаг в localStorage.
-      // Повторно произнести можно только нажав «Озвучить ещё раз» (если нужно).
+      // Приветствие в чате показываем только если истории ещё нет
+      // (память диалога переживает перезагрузку).
+      setMessages((prev) =>
+        prev.length === 0 ? [{ role: "assistant", content: g.text }] : prev
+      );
+
+      // Авто-озвучка через 5с — звучит ОДИН раз навсегда.
       const alreadyGreeted = localStorage.getItem("bp_jarvis_greeted") === "1";
       if (alreadyGreeted) {
         greetedRef.current = true;
@@ -172,6 +216,20 @@ export function Jarvis() {
             onClick={() => setMuted((m) => !m)}
           >
             {muted ? "Звук выкл" : "Звук вкл"}
+          </button>
+          <button
+            className="btn-ghost text-xs"
+            onClick={() => {
+              if (window.confirm("Очистить историю диалога?")) {
+                localStorage.removeItem(HISTORY_KEY);
+                setMessages(
+                  greeting ? [{ role: "assistant", content: greeting.text }] : []
+                );
+              }
+            }}
+            title="Очистить память"
+          >
+            ⌫
           </button>
           <button className="btn-ghost text-xs" onClick={() => setOpen((o) => !o)}>
             {open ? "Свернуть" : "Развернуть"}
