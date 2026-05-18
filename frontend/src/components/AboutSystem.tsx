@@ -18,27 +18,20 @@ const SECTIONS = {
 type Key = keyof typeof SECTIONS;
 
 export function AboutSystem() {
-  const [active, setActive] = useState<Key | null>(null);
+  const [briefOpen, setBriefOpen] = useState(false);
   const [manual, setManual] = useState(false);
 
   return (
     <section className="card">
       <div className="flex flex-wrap items-center gap-2">
         <span className="label mr-2">О системе</span>
-        {(Object.keys(SECTIONS) as Key[]).map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setActive(active === k ? null : k)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition ${
-              active === k
-                ? "bg-smp-accent/15 border-smp-accent text-smp-accent"
-                : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            {SECTIONS[k].title}
-          </button>
-        ))}
+        <button
+          type="button"
+          onClick={() => setBriefOpen(true)}
+          className="text-xs px-3 py-1.5 rounded-lg border bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 transition"
+        >
+          Кратко
+        </button>
         <button
           type="button"
           onClick={() => setManual(true)}
@@ -47,13 +40,51 @@ export function AboutSystem() {
           📖 Инструкция
         </button>
       </div>
-      {active && (
-        <p className="text-sm text-slate-300 leading-relaxed mt-3">
-          {SECTIONS[active].body}
-        </p>
-      )}
+      {briefOpen && <BriefModal onClose={() => setBriefOpen(false)} />}
       {manual && <ManualModal onClose={() => setManual(false)} />}
     </section>
+  );
+}
+
+function BriefModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="card card-accent max-w-xl w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="label">О системе</div>
+            <h2 className="text-xl font-semibold mt-1">Кратко</h2>
+          </div>
+          <button className="btn-ghost text-xs" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="space-y-3">
+          {(Object.keys(SECTIONS) as Key[]).map((k) => (
+            <div
+              key={k}
+              className="rounded-xl border border-white/5 bg-black/20 p-3"
+            >
+              <div className="text-smp-accent text-sm font-semibold mb-1">
+                {SECTIONS[k].title}
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {SECTIONS[k].body}
+              </p>
+            </div>
+          ))}
+        </div>
+        <button className="btn-primary w-full mt-4" onClick={onClose}>
+          Понятно
+        </button>
+      </div>
+    </div>
   );
 }
 
