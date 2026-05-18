@@ -118,6 +118,39 @@ export default function Reports() {
   );
 }
 
+const METRIC_LABELS: Record<string, string> = {
+  stress_index: "Стресс",
+  burnout_risk: "Риск выгорания",
+  work_life_balance: "Баланс работа/жизнь",
+  employer_brand: "Бренд работодателя",
+  leadership_trust: "Доверие к руководству",
+  safety_culture: "Культура безопасности",
+  career_clarity: "Понятность карьеры",
+  team_cohesion: "Сплочённость команды",
+  loyalty_intent: "Лояльность",
+  psychological_safety: "Психологическая безопасность",
+  conscientiousness: "Добросовестность",
+  openness: "Открытость новому",
+  learning_agility: "Обучаемость",
+};
+
+function metricLabel(key: string): string {
+  return METRIC_LABELS[key] || key;
+}
+
+const FLAG_LABELS: Record<string, string> = {
+  high_stress: "Высокий стресс",
+  low_safety_culture: "Низкая безопасность",
+  anchor_pretender: "Якорь под маской двигателя",
+  burnout_risk: "Риск выгорания",
+  low_loyalty: "Низкая лояльность",
+  low_trust: "Низкое доверие",
+};
+
+function flagLabel(flag: string): string {
+  return FLAG_LABELS[flag] || flag.replace(/_/g, " ");
+}
+
 function validityLabel(flag: string | null): string {
   switch (flag) {
     case "ok":
@@ -215,7 +248,7 @@ function DetailModal({
                     key={k}
                     className="rounded-lg bg-black/30 border border-white/5 px-2.5 py-1.5 flex justify-between"
                   >
-                    <span className="text-slate-400 truncate">{k}</span>
+                    <span className="text-slate-400 truncate">{metricLabel(k)}</span>
                     <span className="font-mono">{Number(v).toFixed(1)}</span>
                   </div>
                 ))}
@@ -231,7 +264,7 @@ function DetailModal({
                       key={f}
                       className="chip bg-red-500/10 text-red-200 border border-red-500/20"
                     >
-                      {f.replace(/_/g, " ")}
+                      {flagLabel(f)}
                     </span>
                   ))}
                 </div>

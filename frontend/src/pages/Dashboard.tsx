@@ -12,6 +12,19 @@ import { TopInsight } from "../components/TopInsight";
 import { WeeklyPlan } from "../components/WeeklyPlan";
 import type { DashboardPayload, User } from "../types";
 
+const FLAG_LABELS: Record<string, string> = {
+  high_stress: "Высокий стресс",
+  low_safety_culture: "Низкая безопасность",
+  anchor_pretender: "Якорь под маской двигателя",
+  burnout_risk: "Риск выгорания",
+  low_loyalty: "Низкая лояльность",
+  low_trust: "Низкое доверие",
+};
+
+function flagLabel(code: string): string {
+  return FLAG_LABELS[code] || code.replace(/_/g, " ");
+}
+
 function CellMetric({ v, invert }: { v: number; invert?: boolean }) {
   const good = invert ? v <= 2.5 : v >= 3.5;
   const bad = invert ? v >= 4 : v <= 2.5;
@@ -288,7 +301,7 @@ export default function Dashboard({ user }: { user: User }) {
             <ul className="space-y-1.5 text-sm">
               {data.alerts_summary.map(([code, count]) => (
                 <li key={code} className="flex justify-between">
-                  <span>{code.replace(/_/g, " ")}</span>
+                  <span>{flagLabel(code)}</span>
                   <span className="text-slate-500">{count}</span>
                 </li>
               ))}
