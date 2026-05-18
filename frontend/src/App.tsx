@@ -4,6 +4,7 @@ import Reports from "./pages/Reports";
 import SharedTest from "./pages/SharedTest";
 import TestList from "./pages/TestList";
 import TestRunner from "./pages/TestRunner";
+import Usage from "./pages/Usage";
 import type { User } from "./types";
 
 // Боевой режим без формы логина: бэкенд при отсутствии токена
@@ -67,6 +68,14 @@ export default function App() {
         element={
           <Layout>
             <Reports />
+          </Layout>
+        }
+      />
+      <Route
+        path="/usage"
+        element={
+          <Layout>
+            <Usage />
           </Layout>
         }
       />

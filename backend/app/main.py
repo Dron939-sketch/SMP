@@ -16,10 +16,12 @@ from app.api.routes import (
     prompts,
     reports,
     tests,
+    usage,
 )
 from app.config import get_settings
 from app.core.logging import configure_logging
 from app.services.prompt_loader import get_prompt_loader
+from app.services.usage_tracker import UsageTrackingMiddleware
 
 logger = structlog.get_logger(__name__)
 
@@ -76,6 +78,7 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+app.add_middleware(UsageTrackingMiddleware)
 
 app.include_router(health.router)
 app.include_router(auth.router)
@@ -86,3 +89,4 @@ app.include_router(dashboard.router)
 app.include_router(assistant.router)
 app.include_router(admin.router)
 app.include_router(reports.router)
+app.include_router(usage.router)
