@@ -24,13 +24,12 @@ export function AboutSystem() {
   return (
     <section className="card">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="label mr-2">О системе</span>
         <button
           type="button"
           onClick={() => setBriefOpen(true)}
           className="text-xs px-3 py-1.5 rounded-lg border bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 transition"
         >
-          Кратко
+          О системе
         </button>
         <button
           type="button"
