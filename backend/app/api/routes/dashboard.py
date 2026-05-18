@@ -36,8 +36,8 @@ async def political_officer_dashboard(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(_DASH_ROLES)],
     cycle_tag: str | None = Query(default=None),
-    include_vk: bool = Query(default=True),
-    include_advice: bool = Query(default=True),
+    include_vk: bool = Query(default=False),
+    include_advice: bool = Query(default=False),
 ):
     """Главный экран замполита. Линейный менеджер видит подмножество без PII."""
     data = await build_dashboard_payload(db, cycle_tag=cycle_tag)

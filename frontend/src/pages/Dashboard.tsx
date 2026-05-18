@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { dashboard } from "../api/client";
-import { Jarvis } from "../components/Jarvis";
+import { GreetingPlayer } from "../components/GreetingPlayer";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardPayload, User } from "../types";
 
@@ -23,12 +23,6 @@ const ANCHOR_COLORS: Record<string, string> = {
   anchor: "#ef4444",
   anchor_pretender: "#f59e0b",
   unknown: "#334155",
-};
-
-const SEVERITY_COLOR: Record<string, string> = {
-  info: "bg-cyan-500/10 text-cyan-300 border-cyan-500/30",
-  warn: "bg-amber-500/10 text-amber-300 border-amber-500/30",
-  critical: "bg-red-500/10 text-red-300 border-red-500/30",
 };
 
 function CellMetric({ v, invert }: { v: number; invert?: boolean }) {
@@ -303,86 +297,11 @@ export default function Dashboard({ user }: { user: User }) {
           </ul>
         </section>
 
-        {/* Advisor */}
-        {data.advisor && (
-          <section className="card">
-            <div className="label mb-3">Рекомендации (контент · продвижение · политика)</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {(["content", "promotion", "internal_policy"] as const).map((cat) => (
-                <div key={cat} className="space-y-2">
-                  <div className="text-xs uppercase text-slate-500">
-                    {cat === "content"
-                      ? "Контент VK"
-                      : cat === "promotion"
-                      ? "Продвижение"
-                      : "Внутренняя политика"}
-                  </div>
-                  {data.advisor![cat].map((it, i) => (
-                    <div
-                      key={i}
-                      className={`border rounded-xl p-3 text-sm ${
-                        SEVERITY_COLOR[it.severity] ||
-                        "bg-white/5 border-white/10"
-                      }`}
-                    >
-                      <div className="font-medium mb-1">{it.title}</div>
-                      <div className="text-slate-300 text-sm">{it.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-            {data.advisor.summary && (
-              <div className="text-xs text-slate-500 mt-3 italic">
-                {data.advisor.summary}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* VK */}
-        <section className="card">
-          <div className="label mb-2">VK · страница компании</div>
-          {!data.vk.enabled ? (
-            <div className="text-sm text-slate-500">
-              Интеграция выключена ({data.vk.reason || "VK_SERVICE_TOKEN не задан"}).
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm mb-3">
-                <span className="font-semibold">{data.vk.group?.name || "—"}</span>
-                <span className="text-slate-500">
-                  подписчиков: {data.vk.group?.members_count ?? "—"}
-                </span>
-                <span className="text-slate-500">
-                  постов: {data.vk.aggregate?.posts ?? 0}
-                </span>
-                <span className="text-slate-500">
-                  ср. лайки: {data.vk.aggregate?.avg_likes ?? "—"}
-                </span>
-              </div>
-              <ul className="space-y-2 text-sm max-h-72 overflow-y-auto pr-2">
-                {data.vk.posts.slice(0, 8).map((p) => (
-                  <li
-                    key={p.id}
-                    className="border border-white/5 rounded-xl p-3"
-                  >
-                    <div className="flex items-center justify-between mb-1 text-xs text-slate-500">
-                      <span>{new Date(p.date * 1000).toLocaleDateString("ru-RU")}</span>
-                      <span>♥ {p.likes} · ↺ {p.reposts} · 💬 {p.comments}</span>
-                    </div>
-                    <div className="text-slate-300 line-clamp-3">{p.text || "(без текста)"}</div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
       </div>
 
-      {/* Правая колонка: Джарвис + быстрые алерты + прохождение тестов */}
+      {/* Правая колонка: приветствие + прохождение тестов + алерты */}
       <aside className="xl:col-span-4 space-y-4 sm:space-y-6">
-        <Jarvis />
+        <GreetingPlayer />
 
         <div className="card">
           <div className="label mb-2">Прохождение тестов</div>
