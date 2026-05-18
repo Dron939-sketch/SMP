@@ -30,10 +30,10 @@ docker compose exec backend python -m app.seed   # одноразовый seed
 ## Демо-учётки (после seed)
 | Роль                | Email              | Пароль       |
 |---------------------|--------------------|--------------|
-| Замполит (Зорин)    | zorin@smp.local    | zorin12345   |
-| Админ               | admin@smp.local    | admin12345   |
-| Менеджер участка    | manager@smp.local  | manager12345 |
-| Сотрудник (e1..e6)  | e1@smp.local       | employee123  |
+| Замполит (Зорин)    | zorin@smp.team    | zorin12345   |
+| Админ               | admin@smp.team    | admin12345   |
+| Менеджер участка    | manager@smp.team  | manager12345 |
+| Сотрудник (e1..e6)  | e1@smp.team       | employee123  |
 
 ## Прод
 - Postgres 15+ managed (RDS/Yandex Managed/etc.).
