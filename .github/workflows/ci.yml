@@ -56,6 +56,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Compute lowercase image name
+        # GHCR требует, чтобы имя репо было в нижнем регистре.
+        # github.repository может быть "Dron939-sketch/SMP" — приводим.
+        run: echo "IMAGE_REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -66,4 +70,4 @@ jobs:
           context: .
           file: backend/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/backend:latest
+          tags: ghcr.io/${{ env.IMAGE_REPO }}/backend:latest
