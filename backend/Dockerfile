@@ -24,4 +24,4 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 # На Render порт прокидывается через $PORT; локально дефолт 8000.
 # Seed запускается «лениво» — если БД уже наполнена, операции идемпотентны.
-CMD ["sh", "-c", "python -m app.seed || true; exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

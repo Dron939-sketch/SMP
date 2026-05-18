@@ -28,6 +28,17 @@ async def lifespan(app: FastAPI):
         prompt_version=loader.active_version,
         ai_provider=settings.ai_provider,
     )
+
+    # Запускаем сидинг прямо тут, чтобы видеть ошибки в логах (а не
+    # глотать их через `|| true` в Dockerfile-CMD). Идемпотентно:
+    # _ensure_user/Test внутри проверяет существование.
+    try:
+        from app.seed import run as seed_run
+
+        await seed_run()
+    except Exception as e:
+        logger.error("seed.failed", error=str(e), exc_info=True)
+
     watch_task: asyncio.Task | None = None
     if settings.prompts_hot_reload:
         watch_task = asyncio.create_task(loader.watch())

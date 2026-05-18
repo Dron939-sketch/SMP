@@ -33,6 +33,23 @@ from app.services.timing_service import analyze as analyze_timing
 router = APIRouter(prefix="/api/tests", tags=["tests"])
 
 
+@router.post("/_reseed")
+async def reseed_tests(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_optional_user)],
+):
+    """Принудительный пересид. Безопасно дёргать сколько угодно —
+    операции идемпотентные. Удобно для прода: нажал → проверил."""
+    from app.seed import _seed_tests, _seed_users
+
+    await _seed_users(db)
+    await _seed_tests(db)
+    await db.commit()
+    stmt = select(Test).where(Test.is_active.is_(True))
+    rows = (await db.execute(stmt)).scalars().all()
+    return {"tests_count": len(rows), "titles": [t.title for t in rows]}
+
+
 @router.get("", response_model=list[TestRead])
 async def list_tests(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -44,7 +61,20 @@ async def list_tests(
         .options(selectinload(Test.questions))
         .order_by(Test.created_at.desc())
     )
-    return (await db.execute(stmt)).scalars().all()
+    rows = (await db.execute(stmt)).scalars().all()
+    # Самолечение: если тестов в БД ещё нет (seed по какой-то причине
+    # не отработал — например, в Render-логах был silent fail), создаём
+    # их прямо здесь, на лету. Идемпотентно.
+    if not rows:
+        try:
+            from app.seed import _seed_tests
+
+            await _seed_tests(db)
+            await db.commit()
+            rows = (await db.execute(stmt)).scalars().all()
+        except Exception:
+            await db.rollback()
+    return rows
 
 
 @router.get("/{test_id}", response_model=TestRead)
