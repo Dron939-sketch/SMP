@@ -100,3 +100,21 @@ button, a, input, select, textarea {
 @media (max-width: 640px) {
   .hide-mobile { display: none; }
 }
+
+/* iOS Safari: 100vh скачет при появлении/исчезновении адресной
+   строки. Используем dvh там, где нужна точная высота. */
+@supports (height: 100dvh) {
+  .min-h-screen-safe {
+    min-height: 100dvh;
+  }
+}
+.min-h-screen-safe {
+  min-height: 100vh;
+}
+
+/* На iPhone модалки не должны прижиматься к notch — добавляем
+   safe-area-inset на fixed overlay. */
+.modal-overlay {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
