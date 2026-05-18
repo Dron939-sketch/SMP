@@ -30,11 +30,17 @@ export function Jarvis() {
       setGreeting(g);
       setMessages([{ role: "assistant", content: g.text }]);
 
-      // Авто-приветствие через 5 секунд после загрузки дашборда +
-      // вежливый запрос разрешения на микрофон сразу после.
+      // Авто-приветствие звучит ОДИН раз навсегда — флаг в localStorage.
+      // Повторно произнести можно только нажав «Озвучить ещё раз» (если нужно).
+      const alreadyGreeted = localStorage.getItem("bp_jarvis_greeted") === "1";
+      if (alreadyGreeted) {
+        greetedRef.current = true;
+        return;
+      }
       window.setTimeout(async () => {
         if (cancelled || greetedRef.current) return;
         greetedRef.current = true;
+        localStorage.setItem("bp_jarvis_greeted", "1");
         if (!muted) speak(g.text, g);
 
         try {
