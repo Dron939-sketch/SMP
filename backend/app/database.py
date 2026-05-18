@@ -9,6 +9,9 @@ settings = get_settings()
 
 
 def _to_async_url(url: str) -> str:
+    # Render / Heroku отдают URL как "postgres://..." — нормализуем.
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
     if url.startswith("postgresql+psycopg://"):
         return url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
     if url.startswith("postgresql://"):
