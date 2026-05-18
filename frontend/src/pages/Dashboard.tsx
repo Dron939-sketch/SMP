@@ -1,33 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { dashboard } from "../api/client";
 import { AboutSystem } from "../components/AboutSystem";
 import { CompanyPhaseBadge } from "../components/CompanyPhaseBadge";
 import { DashboardSkeleton } from "../components/DashboardSkeleton";
+import { DepartmentHeatmap } from "../components/DepartmentHeatmap";
+import { EngineDonut } from "../components/EngineDonut";
 import { GreetingPlayer } from "../components/GreetingPlayer";
 import { MetricCard } from "../components/MetricCard";
 import { TopInsight } from "../components/TopInsight";
+import { WeeklyPlan } from "../components/WeeklyPlan";
 import type { DashboardPayload, User } from "../types";
-
-const ANCHOR_COLORS: Record<string, string> = {
-  engine: "#10b981",
-  neutral: "#64748b",
-  anchor: "#ef4444",
-  anchor_pretender: "#f59e0b",
-  unknown: "#334155",
-};
 
 function CellMetric({ v, invert }: { v: number; invert?: boolean }) {
   const good = invert ? v <= 2.5 : v >= 3.5;
@@ -51,16 +34,6 @@ export default function Dashboard({ user }: { user: User }) {
   if (!data) return <DashboardSkeleton />;
 
   const cm = data.company_metrics;
-  const deptRows = Object.entries(data.by_department).map(([dept, m]) => ({
-    department: dept,
-    stress: m.stress_index,
-    trust: m.leadership_trust,
-    safety: m.safety_culture,
-    brand: m.employer_brand,
-  }));
-  const anchorRows = Object.entries(data.anchor_engine_distribution).map(
-    ([name, value]) => ({ name, value })
-  );
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
@@ -130,56 +103,11 @@ export default function Dashboard({ user }: { user: User }) {
           <MetricCard label="Психобезопасность" value={cm.psychological_safety} />
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <div className="card">
-            <div className="label mb-2">Срез по отделам</div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={deptRows}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="department" tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                  <YAxis domain={[0, 5]} tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                  <Tooltip contentStyle={{ background: "#111827", border: "1px solid #1f2937" }} />
-                  <Bar dataKey="stress" fill="#ef4444" name="стресс" />
-                  <Bar dataKey="trust" fill="#22d3ee" name="доверие" />
-                  <Bar dataKey="safety" fill="#10b981" name="безопасность" />
-                  <Bar dataKey="brand" fill="#f59e0b" name="бренд" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+        <WeeklyPlan data={data} />
 
-          <div className="card">
-            <div className="label mb-2">
-              Двигатели и якоря (с подсветкой «pretender»)
-            </div>
-            <div className="h-64 grid grid-cols-1 sm:grid-cols-2 items-center gap-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={anchorRows} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80}>
-                    {anchorRows.map((r) => (
-                      <Cell key={r.name} fill={ANCHOR_COLORS[r.name] || "#334155"} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: "#111827", border: "1px solid #1f2937" }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <ul className="text-sm space-y-1.5">
-                {anchorRows.map((r) => (
-                  <li key={r.name} className="flex items-center gap-2">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full"
-                      style={{ background: ANCHOR_COLORS[r.name] || "#334155" }}
-                    />
-                    <span className="capitalize">
-                      {r.name.replace("_", " ")}
-                    </span>
-                    <span className="text-slate-500">— {r.value}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        <section className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4 sm:gap-6">
+          <DepartmentHeatmap byDepartment={data.by_department} />
+          <EngineDonut distribution={data.anchor_engine_distribution} />
         </section>
 
         {/* Подробная таблица по отделам (все 10 метрик) */}
