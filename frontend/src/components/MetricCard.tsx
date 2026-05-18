@@ -35,7 +35,12 @@ export function MetricCard({
       />
       <div className="relative">
         <div className="flex items-start justify-between gap-2 mb-2 min-h-[2.4em]">
-          <div className="label leading-snug break-words">{label}</div>
+          <div
+            className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-snug break-words min-w-0 flex-1"
+            style={{ hyphens: "auto" }}
+          >
+            {label}
+          </div>
           {icon && <div className="text-slate-500 text-sm shrink-0">{icon}</div>}
         </div>
         <div className="flex items-baseline gap-1.5">
