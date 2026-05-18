@@ -5,12 +5,12 @@ import TestList from "./pages/TestList";
 import TestRunner from "./pages/TestRunner";
 import type { User } from "./types";
 
-// В демо-режиме фронт не требует логина — бэкенд при отсутствии
-// токена сам подставляет синтетического замполита.
-const DEMO_USER: User = {
+// Боевой режим без формы логина: бэкенд при отсутствии токена
+// сам подставляет учётку замполита (Зорин Илья).
+const CURRENT_USER: User = {
   id: "00000000-0000-0000-0000-00000000beef",
-  email: "demo@smp.team",
-  full_name: "Демо Замполит",
+  email: "zorin@smp.team",
+  full_name: "Зорин Илья",
   role: "political_officer",
   department: null,
   site: null,
@@ -32,9 +32,9 @@ function Layout({ children }: { children: React.ReactNode }) {
               <div className="text-xs text-slate-400">СпецМонтажПроект</div>
             </div>
           </div>
-          <div className="text-sm text-slate-300">
-            {DEMO_USER.full_name}{" "}
-            <span className="text-slate-500">· {DEMO_USER.role}</span>
+          <div className="text-sm text-slate-300 text-right">
+            <div>{CURRENT_USER.full_name}</div>
+            <div className="text-xs text-slate-500">{CURRENT_USER.position}</div>
           </div>
         </div>
       </header>
@@ -51,7 +51,7 @@ export default function App() {
         path="/"
         element={
           <Layout>
-            <Dashboard user={DEMO_USER} />
+            <Dashboard user={CURRENT_USER} />
           </Layout>
         }
       />
@@ -59,7 +59,7 @@ export default function App() {
         path="/tests"
         element={
           <Layout>
-            <TestList user={DEMO_USER} />
+            <TestList user={CURRENT_USER} />
           </Layout>
         }
       />

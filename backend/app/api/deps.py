@@ -50,12 +50,14 @@ _DEMO_USER_ID = uuid.UUID("00000000-0000-0000-0000-00000000beef")
 
 
 def _demo_user() -> User:
+    # «Гость без логина» — используется, когда токена нет.
+    # Имя отображается в шапке: Зорин Илья, замполит.
     u = User(
         id=_DEMO_USER_ID,
-        email="demo@smp.team",
+        email="zorin@smp.team",
         hashed_password="",
         role=UserRole.POLITICAL_OFFICER,
-        full_name="Демо Замполит",
+        full_name="Зорин Илья",
         position="Замполит",
         consent_given=True,
         is_active=True,

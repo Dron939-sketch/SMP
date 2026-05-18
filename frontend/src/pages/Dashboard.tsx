@@ -68,20 +68,41 @@ export default function Dashboard({ user }: { user: User }) {
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
       {/* Левая колонка: метрики + графики */}
       <div className="xl:col-span-8 space-y-4 sm:space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <div className="label">Дашборд замполита</div>
-            <h1 className="text-2xl sm:text-3xl font-semibold">
-              {data.company}
-            </h1>
-            <div className="text-sm text-slate-400">
-              Цикл: {data.cycle_tag} · респондентов: {data.respondents}
+        <header className="card card-accent relative overflow-hidden p-5 sm:p-7">
+          <div
+            className="absolute inset-0 pointer-events-none opacity-60"
+            style={{
+              background:
+                "radial-gradient(80% 100% at 0% 0%, rgba(56,189,248,0.18) 0%, transparent 60%), radial-gradient(60% 80% at 100% 0%, rgba(234,179,8,0.10) 0%, transparent 60%)",
+            }}
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="label">Дашборд замполита</div>
+              <h1 className="kpi-gradient text-3xl sm:text-4xl font-semibold tracking-tight mt-1">
+                {data.company}
+              </h1>
+              <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                <span>
+                  Цикл: <span className="text-slate-200">{data.cycle_tag}</span>
+                </span>
+                <span>
+                  Респондентов:{" "}
+                  <span className="text-slate-200">{data.respondents}</span>
+                </span>
+                <span>
+                  Уникальных ФИО:{" "}
+                  <span className="text-slate-200">
+                    {data.total_unique_respondents ?? "—"}
+                  </span>
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Link to="/tests" className="btn-ghost text-sm">
-              Тесты и ссылки
-            </Link>
+            <div className="flex gap-2 flex-wrap">
+              <Link to="/tests" className="btn-primary text-sm">
+                Тесты и ссылки
+              </Link>
+            </div>
           </div>
         </header>
 
