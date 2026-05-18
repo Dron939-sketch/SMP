@@ -38,6 +38,7 @@ export interface Test {
   id: string;
   title: string;
   description: string | null;
+  real_focus: string | null;
   cycle: string;
   is_active: boolean;
   time_limit_seconds: number | null;

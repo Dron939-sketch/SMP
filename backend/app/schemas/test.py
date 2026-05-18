@@ -33,6 +33,9 @@ class TestRead(BaseModel):
     id: uuid.UUID
     title: str
     description: str | None = None
+    # Что реально замеряем — отдаём всем, кто видит /api/tests.
+    # В демо-режиме это видно всем, в проде стоит фильтровать по роли.
+    real_focus: str | None = None
     cycle: str
     is_active: bool
     time_limit_seconds: int | None = None
