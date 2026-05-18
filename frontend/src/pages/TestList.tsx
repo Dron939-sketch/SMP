@@ -7,6 +7,7 @@ export default function TestList({ user }: { user: User }) {
   const [list, setList] = useState<Test[]>([]);
   const [shares, setShares] = useState<Record<string, ShareLink[]>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [popup, setPopup] = useState<{ test: Test; link: ShareLink } | null>(null);
 
   const canShare = user.role !== "employee";
 
@@ -40,6 +41,12 @@ export default function TestList({ user }: { user: User }) {
         expires_in_days: 30,
       });
       setShares((s) => ({ ...s, [t.id]: [link, ...(s[t.id] || [])] }));
+      setPopup({ test: t, link });
+    } catch (e: unknown) {
+      alert(
+        "Не удалось создать ссылку: " +
+          (e instanceof Error ? e.message : String(e))
+      );
     } finally {
       setBusy(null);
     }
@@ -59,10 +66,11 @@ export default function TestList({ user }: { user: User }) {
           Доступные опросы
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          У каждого теста — две легенды. <span className="text-slate-200">Cover</span>{" "}
-          (то, что говорим сотрудникам) и{" "}
-          <span className="text-smp-accent">Реальный фокус</span> (что
-          на самом деле замеряет ИИ). Ссылку можно сразу отправить в
+          У каждого теста — две легенды.{" "}
+          <span className="text-slate-200">Видимая цель</span> — то, что
+          говорим сотрудникам.{" "}
+          <span className="text-smp-accent">Истинная цель</span> — что
+          на самом деле замеряет ИИ. Ссылку можно сразу отправить в
           Telegram / WhatsApp / Max или скопировать.
         </p>
       </header>
@@ -78,6 +86,57 @@ export default function TestList({ user }: { user: User }) {
             onCreateLink={() => createLink(t)}
           />
         ))}
+      </div>
+
+      {popup && (
+        <ShareModal
+          test={popup.test}
+          link={popup.link}
+          onClose={() => setPopup(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ShareModal({
+  test,
+  link,
+  onClose,
+}: {
+  test: Test;
+  link: ShareLink;
+  onClose: () => void;
+}) {
+  const copy = () => {
+    navigator.clipboard?.writeText(link.share_url).then(
+      () => flash("Ссылка скопирована"),
+      () => prompt("Скопируйте вручную:", link.share_url)
+    );
+  };
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="card card-accent max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="label">Ссылка готова</div>
+        <h2 className="text-xl font-semibold mt-1">{test.title}</h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Отправьте сотрудникам — анонимная, действительна 30 дней.
+        </p>
+        <div className="mt-4 bg-black/40 rounded-xl px-3 py-3 border border-white/10 break-all text-sm font-mono">
+          {link.share_url}
+        </div>
+        <button className="btn-primary w-full mt-4" onClick={copy}>
+          📋 Скопировать ссылку
+        </button>
+        <button className="btn-ghost w-full mt-2" onClick={onClose}>
+          Закрыть
+        </button>
       </div>
     </div>
   );
@@ -103,11 +162,11 @@ function TestCard({
         <span className="chip bg-white/5">{t.cycle}</span>
       </div>
 
-      {/* Cover (что говорим сотрудникам) */}
+      {/* Видимая цель (что говорим сотрудникам) */}
       {t.description && (
         <div className="mt-2">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
-            Cover · что говорим сотрудникам
+            Видимая цель · что говорим сотрудникам
           </div>
           <p className="text-sm text-slate-300 whitespace-pre-line">
             {t.description}
@@ -119,7 +178,7 @@ function TestCard({
       {t.real_focus && (
         <div className="mt-3 border-l-2 border-smp-accent/40 pl-3">
           <div className="text-[10px] uppercase tracking-wider text-smp-accent mb-1">
-            Реальный фокус · только для замполита
+            Истинная цель · только для замполита
           </div>
           <p className="text-sm text-slate-200 whitespace-pre-line">
             {t.real_focus}

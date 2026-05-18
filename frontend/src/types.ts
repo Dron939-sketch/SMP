@@ -67,6 +67,9 @@ export interface CompanyMetrics {
   team_cohesion: number;
   loyalty_intent: number;
   psychological_safety: number;
+  conscientiousness?: number;
+  openness?: number;
+  learning_agility?: number;
 }
 
 export interface AnchorPretender {

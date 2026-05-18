@@ -83,6 +83,17 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
       return { ...a, [activeQ.id]: v };
     });
     lastActiveRef.current = Date.now();
+
+    // Автопереход к следующему вопросу для одиночных кликов.
+    if (
+      activeQ.question_type === "likert_5" ||
+      activeQ.question_type === "single_choice"
+    ) {
+      const next = activeIdx + 1;
+      if (next < total) {
+        window.setTimeout(() => setActiveIdx(next), 220);
+      }
+    }
   };
 
   const allAnswered = useMemo(
@@ -160,17 +171,12 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
 
   if (!activeQ) return null;
 
-  const elapsedSec = Math.round(perQuestionMs[activeQ.id] || 0) / 1000;
-
   return (
     <div className="space-y-4 sm:space-y-6">
       <header>
         <div className="flex items-center justify-between mb-2">
           <div className="label">
             Вопрос {activeIdx + 1} из {total}
-          </div>
-          <div className="text-xs text-slate-500">
-            на этом вопросе: {elapsedSec.toFixed(1)}с
           </div>
         </div>
         <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -220,10 +226,6 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
         )}
       </div>
 
-      <div className="text-xs text-slate-500 text-center">
-        Время на каждом вопросе и общее время учитываются для оценки
-        качества ответов. Это анонимная служебная метрика.
-      </div>
     </div>
   );
 }

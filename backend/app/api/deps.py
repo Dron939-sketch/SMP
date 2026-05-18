@@ -12,6 +12,10 @@ from app.models.user import User, UserRole
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
+# Фиксированный UUID замполита-«по умолчанию». Этот пользователь
+# создаётся в БД сидингом, поэтому FK всегда валиден.
+ZAMPOLIT_USER_ID = uuid.UUID("00000000-0000-0000-0000-00000000beef")
+
 
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -44,16 +48,37 @@ def require_roles(*roles: UserRole):
     return _check
 
 
-# Демо-режим: если токена нет/невалидный — возвращаем синтетического
-# замполита, чтобы дашборд и ассистент работали без логина.
-_DEMO_USER_ID = uuid.UUID("00000000-0000-0000-0000-00000000beef")
+async def get_optional_user(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Depends(oauth2)],
+) -> User:
+    """Если токена нет/невалидный — возвращаем замполита из БД
+    (создан сидингом, FK всегда работает)."""
+    uid: uuid.UUID | None = None
+    if token:
+        try:
+            claims = decode_token(token)
+            uid = uuid.UUID(claims["sub"])
+        except (ValueError, KeyError):
+            uid = None
 
+    if uid is not None:
+        u = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+        if u and u.is_active:
+            return u
 
-def _demo_user() -> User:
-    # «Гость без логина» — используется, когда токена нет.
-    # Имя отображается в шапке: Зорин Илья, замполит.
-    u = User(
-        id=_DEMO_USER_ID,
+    # Дефолт: замполит компании.
+    u = (
+        await db.execute(select(User).where(User.id == ZAMPOLIT_USER_ID))
+    ).scalar_one_or_none()
+    if u:
+        return u
+
+    # Подстраховка: если сидинг ещё не отработал, возвращаем in-memory
+    # объект. Запросы, требующие FK, увидят NULL/новый объект (создание
+    # в БД произойдёт на следующем _seed_users).
+    return User(
+        id=ZAMPOLIT_USER_ID,
         email="zorin@smp.team",
         hashed_password="",
         role=UserRole.POLITICAL_OFFICER,
@@ -62,19 +87,3 @@ def _demo_user() -> User:
         consent_given=True,
         is_active=True,
     )
-    return u
-
-
-async def get_optional_user(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    token: Annotated[str | None, Depends(oauth2)],
-) -> User:
-    if not token:
-        return _demo_user()
-    try:
-        claims = decode_token(token)
-        uid = uuid.UUID(claims["sub"])
-    except (ValueError, KeyError):
-        return _demo_user()
-    user = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
-    return user if user and user.is_active else _demo_user()

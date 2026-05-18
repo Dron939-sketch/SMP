@@ -127,7 +127,30 @@ async def _migrate_legacy_emails(session) -> None:
 
 
 async def _seed_users(session) -> None:
+    from app.api.deps import ZAMPOLIT_USER_ID
+
     await _migrate_legacy_emails(session)
+
+    # Гарантированный замполит с фиксированным UUID — используется
+    # при отсутствии JWT (FK всегда валиден).
+    existing = (
+        await session.execute(select(User).where(User.id == ZAMPOLIT_USER_ID))
+    ).scalar_one_or_none()
+    if not existing:
+        session.add(
+            User(
+                id=ZAMPOLIT_USER_ID,
+                email="zorin@smp.team",
+                hashed_password=hash_password("zorin"),
+                role=UserRole.POLITICAL_OFFICER,
+                full_name="Зорин Илья",
+                position="Замполит",
+                consent_given=True,
+                is_active=True,
+            )
+        )
+        await session.flush()
+
     # Резервная учётка быстрого входа 123 / 123 (для проверки логина).
     await _ensure_user(
         session,

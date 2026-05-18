@@ -100,6 +100,37 @@ export default function Dashboard({ user }: { user: User }) {
           </div>
         </header>
 
+        {/* О системе — цели и возможности приложения */}
+        <section className="card">
+          <div className="label mb-2">О системе</div>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            «Замполит» — внутренний инструмент диагностики людей и
+            климата. Сотрудники проходят короткие тесты с
+            <span className="text-smp-accent"> замаскированными вопросами</span>
+            ; ИИ-модуль по совокупности ответов восстанавливает
+            скрытые метрики — стресс, доверие к руководству, культуру
+            безопасности, бренд работодателя, лояльность.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
+            <div className="rounded-xl border border-white/5 p-3">
+              <div className="text-smp-accent font-medium mb-1">Цель</div>
+              Видеть истинное настроение коллектива — без эффекта
+              «социально желательных» ответов.
+            </div>
+            <div className="rounded-xl border border-white/5 p-3">
+              <div className="text-smp-accent font-medium mb-1">Что замеряем</div>
+              10 шкал: стресс, выгорание, баланс, бренд, доверие,
+              безопасность, карьера, сплочённость, лояльность,
+              психобезопасность.
+            </div>
+            <div className="rounded-xl border border-white/5 p-3">
+              <div className="text-smp-accent font-medium mb-1">Главный сигнал</div>
+              «Якорь под маской двигателя» — внешне лояльный
+              сотрудник, скрыто тормозящий команду.
+            </div>
+          </div>
+        </section>
+
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <MetricCard label="Стресс" value={cm.stress_index} invert hint="ниже — лучше" />
           <MetricCard label="Риск выгорания" value={cm.burnout_risk} invert hint="ниже — лучше" />
