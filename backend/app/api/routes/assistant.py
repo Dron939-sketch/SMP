@@ -76,10 +76,10 @@ class SpeakRequest(BaseModel):
 async def greeting(user: Annotated[User, Depends(_ASSISTANT_ROLES)]):
     s = get_settings()
     text = (
-        f"Привет, командор! Меня зовут {s.assistant_name}. "
+        f"Здравствуй. Меня зовут {s.assistant_name}. "
         "Я твой персональный помощник. Можешь задать вопрос голосом — "
         "нажми микрофон, или просто напиши в поисковике. Я подключён к "
-        "DeepSeek и вижу текущие метрики компании."
+        "Мейстер AI и вижу текущие метрики компании."
     )
     return GreetingResponse(
         name=s.assistant_name,

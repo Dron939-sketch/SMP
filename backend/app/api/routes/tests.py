@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_current_user, get_optional_user, require_roles
 from app.config import get_settings
 from app.database import get_db
 from app.models.analysis import AnalysisResult
@@ -266,9 +266,10 @@ async def submit_test(
     test_id: uuid.UUID,
     payload: TestSubmitRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
-    if not user.consent_given:
+    # Согласие проверяем только для реальных учёток (демо-юзер всегда true).
+    if user.id and not user.consent_given:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "consent required")
     test = (
         await db.execute(

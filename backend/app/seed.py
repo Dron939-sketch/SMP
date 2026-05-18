@@ -43,8 +43,15 @@ def _question_bank_root() -> Path:
 
 
 async def _create_schema(eng: AsyncEngine) -> None:
+    from sqlalchemy import text
+
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Дозаливка колонок, которые добавились после первого деплоя
+        # (create_all не делает ALTER TABLE на существующих таблицах).
+        await conn.execute(
+            text("ALTER TABLE tests ADD COLUMN IF NOT EXISTS real_focus TEXT")
+        )
 
 
 async def _ensure_user(
@@ -179,16 +186,32 @@ async def _seed_tests(session) -> None:
     bank_by_code = {q["code"]: q for q in bank["questions"]}
 
     for tpl in templates["tests"]:
+        cover = tpl.get("cover_story") or tpl.get("description")
+        focus = tpl.get("real_focus")
         existing = (
             await session.execute(select(Test).where(Test.title == tpl["title"]))
         ).scalar_one_or_none()
         if existing:
-            logger.info("seed.test.skip", title=tpl["title"])
+            # Обновляем описания при изменении YAML (на старых записях
+            # real_focus может быть NULL — досыпаем).
+            updated = False
+            if cover and existing.description != cover:
+                existing.description = cover
+                updated = True
+            if focus and existing.real_focus != focus:
+                existing.real_focus = focus
+                updated = True
+            if updated:
+                await session.flush()
+                logger.info("seed.test.refreshed", title=tpl["title"])
+            else:
+                logger.info("seed.test.skip", title=tpl["title"])
             continue
 
         test = Test(
             title=tpl["title"],
-            description=tpl.get("description"),
+            description=cover,
+            real_focus=focus,
             cycle=tpl.get("cycle", "monthly"),
             time_limit_seconds=tpl.get("time_limit_seconds"),
             is_active=True,
