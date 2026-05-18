@@ -62,18 +62,19 @@ async def list_tests(
         .order_by(Test.created_at.desc())
     )
     rows = (await db.execute(stmt)).scalars().all()
-    # Самолечение: если тестов в БД ещё нет (seed по какой-то причине
-    # не отработал — например, в Render-логах был silent fail), создаём
-    # их прямо здесь, на лету. Идемпотентно.
-    if not rows:
-        try:
-            from app.seed import _seed_tests
+    # Самолечение: если шаблонов в YAML больше, чем активных тестов
+    # в БД — досеиваем недостающие. Срабатывает и при пустой БД, и
+    # после добавления новых шаблонов без редеплоя.
+    try:
+        from app.seed import _expected_test_titles, _seed_tests
 
+        expected = _expected_test_titles()
+        if expected and len(rows) < len(expected):
             await _seed_tests(db)
             await db.commit()
             rows = (await db.execute(stmt)).scalars().all()
-        except Exception:
-            await db.rollback()
+    except Exception:
+        await db.rollback()
     return rows
 
 
