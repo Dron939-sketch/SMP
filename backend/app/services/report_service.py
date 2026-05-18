@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analysis import AnalysisResult
 from app.models.response import TestResponse
+from app.models.test import Test
 from app.models.user import User
 
 METRIC_KEYS = [
@@ -53,6 +54,42 @@ async def build_dashboard_payload(
         stmt = stmt.where(TestResponse.cycle_tag == cycle_tag)
 
     rows = (await db.execute(stmt)).all()
+
+    # Счётчик прохождений по тестам: используем все ответы (даже без
+    # анализа), чтобы было видно реальный охват.
+    from sqlalchemy import func
+
+    test_stats_stmt = (
+        select(
+            Test.id,
+            Test.title,
+            func.count(TestResponse.id).label("submissions"),
+            func.count(func.distinct(TestResponse.respondent_name)).label("unique_names"),
+        )
+        .outerjoin(TestResponse, TestResponse.test_id == Test.id)
+        .group_by(Test.id, Test.title)
+        .order_by(Test.title)
+    )
+    if cycle_tag:
+        test_stats_stmt = test_stats_stmt.where(
+            (TestResponse.cycle_tag == cycle_tag) | (TestResponse.id.is_(None))
+        )
+    test_stats_rows = (await db.execute(test_stats_stmt)).all()
+    test_stats = [
+        {
+            "test_id": str(r.id),
+            "title": r.title,
+            "submissions": int(r.submissions or 0),
+            "unique_respondents": int(r.unique_names or 0),
+        }
+        for r in test_stats_rows
+    ]
+    total_submissions = sum(s["submissions"] for s in test_stats)
+    total_unique = (
+        await db.execute(
+            select(func.count(func.distinct(TestResponse.respondent_name)))
+        )
+    ).scalar() or 0
 
     totals: dict[str, list[float]] = {k: [] for k in METRIC_KEYS}
     by_department: dict[str, dict[str, list[float]]] = {}
@@ -131,6 +168,9 @@ async def build_dashboard_payload(
             "sample_sentences": image_sentences[:8],
         },
         "alerts_summary": Counter(a["code"] for a in alerts).most_common(),
+        "test_stats": test_stats,
+        "total_submissions": total_submissions,
+        "total_unique_respondents": int(total_unique),
     }
 
 

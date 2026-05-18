@@ -359,9 +359,42 @@ export default function Dashboard({ user }: { user: User }) {
         </section>
       </div>
 
-      {/* Правая колонка: Джарвис + быстрые алерты */}
+      {/* Правая колонка: Джарвис + быстрые алерты + прохождение тестов */}
       <aside className="xl:col-span-4 space-y-4 sm:space-y-6">
         <Jarvis />
+
+        <div className="card">
+          <div className="label mb-2">Прохождение тестов</div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <div className="text-2xl font-semibold">
+                {data.total_submissions}
+              </div>
+              <div className="text-xs text-slate-500">всего ответов</div>
+            </div>
+            <div>
+              <div className="text-2xl font-semibold">
+                {data.total_unique_respondents}
+              </div>
+              <div className="text-xs text-slate-500">уникальных ФИО</div>
+            </div>
+          </div>
+          {data.test_stats.length === 0 ? (
+            <div className="text-sm text-slate-500">Тестов ещё нет.</div>
+          ) : (
+            <ul className="space-y-1.5 text-sm">
+              {data.test_stats.map((t) => (
+                <li key={t.test_id} className="flex justify-between gap-2">
+                  <span className="truncate">{t.title}</span>
+                  <span className="text-slate-500 shrink-0">
+                    {t.submissions} / {t.unique_respondents} чел.
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="card">
           <div className="label mb-2">Алерты цикла</div>
           {data.alerts_summary.length === 0 ? (

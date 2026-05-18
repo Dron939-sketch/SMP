@@ -52,6 +52,12 @@ async def _create_schema(eng: AsyncEngine) -> None:
         await conn.execute(
             text("ALTER TABLE tests ADD COLUMN IF NOT EXISTS real_focus TEXT")
         )
+        await conn.execute(
+            text(
+                "ALTER TABLE test_responses ADD COLUMN IF NOT EXISTS "
+                "respondent_name VARCHAR(255)"
+            )
+        )
 
 
 async def _ensure_user(
