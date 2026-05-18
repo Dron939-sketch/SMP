@@ -3,7 +3,7 @@ import { auth, setTokens } from "../api/client";
 import type { User } from "../types";
 
 export default function Login({ onLogin }: { onLogin: (u: User) => void }) {
-  const [email, setEmail] = useState("zorin@smp.local");
+  const [email, setEmail] = useState("zorin@smp.team");
   const [password, setPassword] = useState("zorin12345");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,9 +60,9 @@ export default function Login({ onLogin }: { onLogin: (u: User) => void }) {
         </button>
         <div className="text-xs text-slate-500 leading-relaxed">
           Демо-учётки:
-          <br />• zorin@smp.local / zorin12345 (замполит)
-          <br />• admin@smp.local / admin12345
-          <br />• e1@smp.local / employee123 (сотрудник)
+          <br />• zorin@smp.team / zorin12345 (замполит)
+          <br />• admin@smp.team / admin12345
+          <br />• e1@smp.team / employee123 (сотрудник)
         </div>
       </form>
     </div>

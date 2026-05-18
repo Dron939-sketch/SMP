@@ -71,17 +71,33 @@ async def _ensure_user(
     return user
 
 
+async def _migrate_legacy_emails(session) -> None:
+    """Старые сиды использовали @smp.local (RFC-зарезервированный домен,
+    email-validator его отклоняет). Меняем на @smp.team у всех существующих
+    учёток. Идемпотентно — если их нет, ничего не делает.
+    """
+    legacy = (
+        await session.execute(select(User).where(User.email.like("%@smp.local")))
+    ).scalars().all()
+    for u in legacy:
+        local = u.email.split("@", 1)[0]
+        u.email = f"{local}@smp.team"
+    if legacy:
+        await session.flush()
+
+
 async def _seed_users(session) -> None:
+    await _migrate_legacy_emails(session)
     await _ensure_user(
         session,
-        email="admin@smp.local",
+        email="admin@smp.team",
         password="admin12345",
         role=UserRole.ADMIN,
         full_name="Системный администратор",
     )
     await _ensure_user(
         session,
-        email="zorin@smp.local",
+        email="zorin@smp.team",
         password="zorin12345",
         role=UserRole.POLITICAL_OFFICER,
         full_name="Илья Зорин",
@@ -89,7 +105,7 @@ async def _seed_users(session) -> None:
     )
     await _ensure_user(
         session,
-        email="manager@smp.local",
+        email="manager@smp.team",
         password="manager12345",
         role=UserRole.MANAGER,
         full_name="Сергей Иванов",
@@ -98,12 +114,12 @@ async def _seed_users(session) -> None:
         position="Начальник участка",
     )
     sample_employees = [
-        ("e1@smp.local", "Михаил Петров", "СМР", "Участок №1", "Прораб"),
-        ("e2@smp.local", "Анна Смирнова", "ПТО", "Офис",        "Инженер ПТО"),
-        ("e3@smp.local", "Дмитрий Ким",   "СМР", "Участок №2", "Мастер"),
-        ("e4@smp.local", "Ольга Новикова","HR",  "Офис",        "Специалист HR"),
-        ("e5@smp.local", "Алексей Грин",  "ОТиТБ","Участок №1","Инженер ОТ"),
-        ("e6@smp.local", "Иван Соколов",  "СМР", "Участок №3", "Бригадир"),
+        ("e1@smp.team", "Михаил Петров", "СМР", "Участок №1", "Прораб"),
+        ("e2@smp.team", "Анна Смирнова", "ПТО", "Офис",        "Инженер ПТО"),
+        ("e3@smp.team", "Дмитрий Ким",   "СМР", "Участок №2", "Мастер"),
+        ("e4@smp.team", "Ольга Новикова","HR",  "Офис",        "Специалист HR"),
+        ("e5@smp.team", "Алексей Грин",  "ОТиТБ","Участок №1","Инженер ОТ"),
+        ("e6@smp.team", "Иван Соколов",  "СМР", "Участок №3", "Бригадир"),
     ]
     for email, name, dept, site, pos in sample_employees:
         await _ensure_user(
