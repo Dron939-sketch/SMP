@@ -175,7 +175,7 @@ async def create_share_link(
         expires_at=link.expires_at,
         uses=link.uses,
         note=link.note,
-        share_url=f"{origin}/t/{token}",
+        share_url=f"{origin}/#/t/{token}",
     )
 
 
@@ -213,7 +213,7 @@ async def list_share_links(
             expires_at=r.expires_at,
             uses=r.uses,
             note=r.note,
-            share_url=f"{origin}/t/{r.token}",
+            share_url=f"{origin}/#/t/{r.token}",
         )
         for r in rows
     ]
