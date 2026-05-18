@@ -23,7 +23,7 @@ services:
     name: buildpulse-backend
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
