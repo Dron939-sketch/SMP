@@ -89,7 +89,7 @@ class AssistantService:
                 model=self.settings.assistant_model,
                 timeout=self.settings.ai_timeout_seconds,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("assistant.failure", provider=self.provider.name, error=str(e))
             answer = (
                 "Командор, не смог связаться с DeepSeek. "

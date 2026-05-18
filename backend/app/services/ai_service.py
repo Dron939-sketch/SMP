@@ -20,7 +20,7 @@ from pydantic import ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import get_settings
-from app.schemas.ai import AIAnalyzeRequest, AIAnalysisResult
+from app.schemas.ai import AIAnalysisResult, AIAnalyzeRequest
 from app.services.ai_providers import LLMProvider, MockProvider, build_provider
 from app.services.prompt_loader import PromptLoader, get_prompt_loader
 
@@ -111,7 +111,7 @@ class AIService:
         t0 = time.perf_counter()
         try:
             raw = await self._call_provider(system, user)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error(
                 "ai.provider_failure",
                 provider=self.provider.name,

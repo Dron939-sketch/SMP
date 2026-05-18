@@ -105,7 +105,7 @@ class PromptLoader:
             ):
                 logger.info("prompts.changes_detected", count=len(changes))
                 self.reload()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("prompts.watch.error", error=str(e))
 
     def stop_watch(self) -> None:

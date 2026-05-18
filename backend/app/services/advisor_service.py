@@ -140,7 +140,7 @@ class AdvisorService:
                 model=self.settings.advisor_model,
                 timeout=self.settings.ai_timeout_seconds,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("advisor.failure", error=str(e))
             raw = await MockProvider().complete_json(
                 _SYSTEM_PROMPT,
