@@ -174,9 +174,9 @@ function TestCard({
         </div>
       )}
 
-      {/* Real focus (что замеряем) */}
+      {/* Истинная цель — что замеряем (только для замполита) */}
       {t.real_focus && (
-        <div className="mt-3 border-l-2 border-smp-accent/40 pl-3">
+        <div className="mt-3 rounded-xl bg-black/40 border border-smp-accent/30 p-3">
           <div className="text-[10px] uppercase tracking-wider text-smp-accent mb-1">
             Истинная цель · только для замполита
           </div>
