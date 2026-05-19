@@ -37,6 +37,120 @@ def _hash_pii(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()[:16]
 
 
+# Известные синонимы, которые LLM выдаёт вместо канонических имён шкал.
+_METRIC_ALIASES: dict[str, str] = {
+    "loyalty": "loyalty_intent",
+    "loyalty_index": "loyalty_intent",
+    "team_spirit": "team_cohesion",
+    "team": "team_cohesion",
+    "cohesion": "team_cohesion",
+    "career": "career_clarity",
+    "career_growth": "career_clarity",
+    "career_path": "career_clarity",
+    "safety": "safety_culture",
+    "stress": "stress_index",
+    "burnout": "burnout_risk",
+    "wlb": "work_life_balance",
+    "balance": "work_life_balance",
+    "brand": "employer_brand",
+    "leadership": "leadership_trust",
+    "trust": "leadership_trust",
+    "psy_safety": "psychological_safety",
+    "psafety": "psychological_safety",
+}
+
+_REQUIRED_METRICS = (
+    "stress_index",
+    "burnout_risk",
+    "work_life_balance",
+    "employer_brand",
+    "leadership_trust",
+    "safety_culture",
+    "career_clarity",
+    "team_cohesion",
+    "loyalty_intent",
+    "psychological_safety",
+)
+
+
+def _normalize_llm_response(raw: dict[str, Any]) -> dict[str, Any]:
+    """Приводит ответ LLM к каноничной схеме AIAnalysisResult.
+
+    Реальные LLM (DeepSeek, OpenAI) иногда возвращают свои варианты
+    имён — например ``loyalty`` вместо ``loyalty_intent`` или
+    ``team_spirit`` вместо ``team_cohesion``. Маппим известные
+    синонимы, выкидываем неизвестные ключи, добиваем недостающие
+    метрики значением 3.0 (нейтральное «нет данных»). Plus:
+    - ``summary_text`` собирается из reasoning, если пустой;
+    - ``anchor_engine_confidence`` ставится 0.6 если не задан;
+    - ``employer_image`` гарантированно непустой.
+    """
+    out = dict(raw)
+
+    # score_metrics: алиасы → каноны, добиваем недостающие.
+    metrics_in = dict(raw.get("score_metrics") or {})
+    metrics_out: dict[str, float] = {}
+    for key, val in metrics_in.items():
+        canon = _METRIC_ALIASES.get(key, key)
+        if canon in _REQUIRED_METRICS or canon in (
+            "conscientiousness",
+            "openness",
+            "learning_agility",
+        ):
+            try:
+                metrics_out[canon] = float(val)
+            except (TypeError, ValueError):
+                continue
+    for k in _REQUIRED_METRICS:
+        metrics_out.setdefault(k, 3.0)
+    out["score_metrics"] = metrics_out
+
+    # summary_text — обязательное непустое.
+    summary = (raw.get("summary_text") or "").strip()
+    if not summary:
+        # Соберём из reasoning + первой рекомендации, если есть.
+        parts = []
+        if reasoning := raw.get("anchor_engine_reasoning"):
+            parts.append(str(reasoning))
+        recs = raw.get("recommendations")
+        if isinstance(recs, list) and recs:
+            parts.append(f"Рекомендация: {recs[0]}")
+        summary = " ".join(parts) or "Краткое резюме недоступно: модель не предоставила описание."
+    out["summary_text"] = summary[:1900]
+
+    # anchor_engine_confidence — обязательное.
+    if "anchor_engine_confidence" not in out or out.get("anchor_engine_confidence") is None:
+        out["anchor_engine_confidence"] = 0.6
+    else:
+        try:
+            c = float(out["anchor_engine_confidence"])
+            out["anchor_engine_confidence"] = max(0.0, min(1.0, c))
+        except (TypeError, ValueError):
+            out["anchor_engine_confidence"] = 0.6
+
+    # anchor_engine — допустимое значение.
+    valid_anchors = {"engine", "neutral", "anchor", "anchor_pretender"}
+    if out.get("anchor_engine") not in valid_anchors:
+        out["anchor_engine"] = "neutral"
+    if not (out.get("anchor_engine_reasoning") or "").strip():
+        out["anchor_engine_reasoning"] = "Недостаточно данных для уверенного вывода."
+
+    # employer_image — гарантированно есть и не пустой.
+    ei = raw.get("employer_image") or {}
+    if not isinstance(ei, dict):
+        ei = {}
+    ei.setdefault("keywords", [])
+    ei.setdefault("one_sentence", "")
+    ei.setdefault("sentiment", "neutral")
+    out["employer_image"] = ei
+
+    # risk_flags / recommendations — массивы.
+    out["risk_flags"] = list(raw.get("risk_flags") or [])
+    out["recommendations"] = list(raw.get("recommendations") or [])[:8]
+
+    return out
+
+
 class AIService:
     def __init__(
         self,
@@ -127,6 +241,7 @@ class AIService:
 
         raw["prompt_version"] = version
         raw["ai_model"] = self.settings.ai_model
+        raw = _normalize_llm_response(raw)
         try:
             result = AIAnalysisResult(**raw)
         except ValidationError as e:
