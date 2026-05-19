@@ -43,7 +43,7 @@ export default function Reports() {
         </h1>
         <p className="text-sm text-slate-400 mt-1">
           Каждая строка — одно прохождение. Кликни, чтобы открыть
-          полный ИИ-анализ.
+          полный анализ системы.
         </p>
       </header>
 
@@ -200,7 +200,7 @@ function DetailModal({
         {a && (
           <>
             <section className="mt-4">
-              <div className="label mb-1">Резюме ИИ</div>
+              <div className="label mb-1">Резюме</div>
               <p className="text-sm text-slate-200 leading-relaxed">
                 {a.summary_text}
               </p>
