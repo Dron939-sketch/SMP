@@ -49,7 +49,10 @@ class AnswerSubmit(BaseModel):
     value: int | float | str | list[str] | None = None
     text: str | None = None
     # сколько миллисекунд респондент думал именно над этим вопросом
-    time_spent_ms: int | None = Field(default=None, ge=0, le=1_000_000)
+    # До 2 часов на один вопрос — у нас есть открытые тексты, на
+    # которых респондент может реально подвисать. Аномалии всё равно
+    # видны через rushed_share / validity_flag.
+    time_spent_ms: int | None = Field(default=None, ge=0, le=2 * 3600 * 1000)
     # сколько раз менял ответ — индикатор сомнений
     revisions: int | None = Field(default=None, ge=0, le=200)
 
