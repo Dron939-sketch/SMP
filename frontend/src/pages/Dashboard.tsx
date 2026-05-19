@@ -10,20 +10,8 @@ import { GreetingPlayer } from "../components/GreetingPlayer";
 import { MetricCard } from "../components/MetricCard";
 import { TopInsight } from "../components/TopInsight";
 import { WeeklyPlan } from "../components/WeeklyPlan";
+import { flagLabel } from "../labels";
 import type { DashboardPayload, User } from "../types";
-
-const FLAG_LABELS: Record<string, string> = {
-  high_stress: "Высокий стресс",
-  low_safety_culture: "Низкая безопасность",
-  anchor_pretender: "Якорь под маской двигателя",
-  burnout_risk: "Риск выгорания",
-  low_loyalty: "Низкая лояльность",
-  low_trust: "Низкое доверие",
-};
-
-function flagLabel(code: string): string {
-  return FLAG_LABELS[code] || code.replace(/_/g, " ");
-}
 
 function CellMetric({ v, invert }: { v: number; invert?: boolean }) {
   const good = invert ? v <= 2.5 : v >= 3.5;
