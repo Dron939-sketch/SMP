@@ -37,6 +37,7 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeIdx, setActiveIdx] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startedAtRef = useRef<Date>(new Date());
   const lastTickRef = useRef<number>(Date.now());
@@ -96,13 +97,43 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     }
   };
 
+  const isAnswered = (q: { id: string; question_type: string }) => {
+    const v = answers[q.id];
+    if (v == null) return false;
+    if (typeof v === "string") return v.trim().length > 0;
+    if (Array.isArray(v)) return v.length > 0;
+    return true;
+  };
+
   const allAnswered = useMemo(
-    () => test.questions.every((q) => !q.is_required || answers[q.id] != null && answers[q.id] !== ""),
+    () => test.questions.every((q) => !q.is_required || isAnswered(q)),
+    [answers, test.questions]
+  );
+
+  const missingIndices = useMemo(
+    () =>
+      test.questions
+        .map((q, i) => ({ i, q }))
+        .filter(({ q }) => q.is_required && !isAnswered(q))
+        .map(({ i }) => i),
     [answers, test.questions]
   );
 
   const handleSubmit = async () => {
-    if (!allAnswered || busy) return;
+    setError(null);
+    if (!allAnswered) {
+      const first = missingIndices[0];
+      if (first !== undefined) {
+        setActiveIdx(first);
+        setError(
+          `Не заполнено ${missingIndices.length} ${
+            missingIndices.length === 1 ? "вопрос" : "вопросов"
+          }. Открыл первый из них.`
+        );
+      }
+      return;
+    }
+    if (busy) return;
     setBusy(true);
     const finished = new Date();
     const totalMs = finished.getTime() - startedAtRef.current.getTime();
@@ -127,6 +158,9 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     };
     try {
       await onSubmit(payload);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`Не удалось отправить: ${msg}`);
     } finally {
       setBusy(false);
     }
@@ -219,12 +253,22 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
           <button
             className="btn-primary"
             onClick={handleSubmit}
-            disabled={!allAnswered || busy}
+            disabled={busy}
           >
-            {busy ? "Отправляю…" : "Завершить тест"}
+            {busy
+              ? "Отправляю…"
+              : allAnswered
+              ? "Завершить тест"
+              : `Заполнить ещё ${missingIndices.length}`}
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-smp-crit/30 bg-red-500/10 text-red-200 text-sm px-3 py-2">
+          {error}
+        </div>
+      )}
 
     </div>
   );
