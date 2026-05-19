@@ -78,4 +78,26 @@ template: |
   - summary_text и anchor_engine_confidence ОБЯЗАТЕЛЬНЫ.
   - если данных по какой-то шкале нет — ставь 3.0 (нейтральное), не пропускай.
 
+  ЯЗЫК ТЕКСТА (КРИТИЧНО — это видит замполит):
+  - summary_text, anchor_engine_reasoning, recommendations,
+    employer_image.one_sentence, employer_image.what_to_change —
+    ПИШУТСЯ НА РУССКОМ ЯЗЫКЕ.
+  - в этом тексте НЕ ИСПОЛЬЗУЙ технические имена полей
+    (employer_brand, leadership_trust, anchor_pretender,
+     psychological_safety, work_life_balance и т.п.).
+    Используй человеческие формулировки:
+      • employer_brand        → «бренд работодателя» / «образ компании»
+      • leadership_trust      → «доверие к руководству»
+      • psychological_safety  → «психологическая безопасность»
+      • work_life_balance     → «баланс работа/жизнь»
+      • team_cohesion         → «сплочённость команды»
+      • career_clarity        → «понятность карьеры»
+      • safety_culture        → «культура безопасности»
+      • loyalty_intent        → «лояльность»
+      • stress_index          → «уровень стресса»
+      • burnout_risk          → «риск выгорания»
+      • anchor_pretender      → «якорь под маской двигателя»
+      • engine / anchor / neutral → «двигатель» / «якорь» / «нейтрален»
+  - технические имена допускаются ТОЛЬКО как ключи JSON, не в текстах.
+
   Верни СТРОГО валидный JSON и НИЧЕГО кроме него.
