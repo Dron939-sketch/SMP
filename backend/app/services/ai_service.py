@@ -72,6 +72,35 @@ _REQUIRED_METRICS = (
     "psychological_safety",
 )
 
+# Замена технических кодов на русские слова в свободном тексте
+# (summary_text / reasoning / recommendations). Порядок важен:
+# длинные имена раньше — иначе "stress" заменится в "stress_index".
+_TEXT_RU: tuple[tuple[str, str], ...] = (
+    ("psychological_safety", "психологическая безопасность"),
+    ("work_life_balance", "баланс работа/жизнь"),
+    ("leadership_trust", "доверие к руководству"),
+    ("safety_culture", "культура безопасности"),
+    ("employer_brand", "бренд работодателя"),
+    ("career_clarity", "понятность карьеры"),
+    ("team_cohesion", "сплочённость команды"),
+    ("loyalty_intent", "лояльность"),
+    ("burnout_risk", "риск выгорания"),
+    ("stress_index", "уровень стресса"),
+    ("anchor_pretender", "якорь под маской двигателя"),
+    ("learning_agility", "обучаемость"),
+    ("conscientiousness", "добросовестность"),
+    ("openness", "открытость новому"),
+)
+
+
+def _ru_codes(text: str) -> str:
+    """Заменяет технические имена шкал на русские в свободном тексте."""
+    if not text:
+        return text
+    for code, ru in _TEXT_RU:
+        text = text.replace(code, ru)
+    return text
+
 
 def _normalize_llm_response(raw: dict[str, Any]) -> dict[str, Any]:
     """Приводит ответ LLM к каноничной схеме AIAnalysisResult.
@@ -116,7 +145,7 @@ def _normalize_llm_response(raw: dict[str, Any]) -> dict[str, Any]:
         if isinstance(recs, list) and recs:
             parts.append(f"Рекомендация: {recs[0]}")
         summary = " ".join(parts) or "Краткое резюме недоступно: модель не предоставила описание."
-    out["summary_text"] = summary[:1900]
+    out["summary_text"] = _ru_codes(summary[:1900])
 
     # anchor_engine_confidence — обязательное.
     if "anchor_engine_confidence" not in out or out.get("anchor_engine_confidence") is None:
@@ -132,21 +161,28 @@ def _normalize_llm_response(raw: dict[str, Any]) -> dict[str, Any]:
     valid_anchors = {"engine", "neutral", "anchor", "anchor_pretender"}
     if out.get("anchor_engine") not in valid_anchors:
         out["anchor_engine"] = "neutral"
-    if not (out.get("anchor_engine_reasoning") or "").strip():
-        out["anchor_engine_reasoning"] = "Недостаточно данных для уверенного вывода."
+    reasoning_text = (out.get("anchor_engine_reasoning") or "").strip()
+    if not reasoning_text:
+        reasoning_text = "Недостаточно данных для уверенного вывода."
+    out["anchor_engine_reasoning"] = _ru_codes(reasoning_text)
 
-    # employer_image — гарантированно есть и не пустой.
+    # employer_image — гарантированно есть и не пустой, тексты — на русском.
     ei = raw.get("employer_image") or {}
     if not isinstance(ei, dict):
         ei = {}
     ei.setdefault("keywords", [])
     ei.setdefault("one_sentence", "")
     ei.setdefault("sentiment", "neutral")
+    ei["one_sentence"] = _ru_codes(ei.get("one_sentence") or "")
+    if ei.get("what_to_change"):
+        ei["what_to_change"] = _ru_codes(ei["what_to_change"])
     out["employer_image"] = ei
 
-    # risk_flags / recommendations — массивы.
+    # risk_flags — массив; recommendations — массив, текст по-русски.
     out["risk_flags"] = list(raw.get("risk_flags") or [])
-    out["recommendations"] = list(raw.get("recommendations") or [])[:8]
+    out["recommendations"] = [
+        _ru_codes(str(r)) for r in list(raw.get("recommendations") or [])[:8]
+    ]
 
     return out
 
