@@ -80,6 +80,26 @@ app.add_middleware(
 )
 app.add_middleware(UsageTrackingMiddleware)
 
+
+@app.exception_handler(Exception)
+async def _unhandled_exception(request, exc):  # type: ignore[no-untyped-def]
+    """Любая необработанная ошибка — в лог со stack-trace.
+    Клиенту отдаём 500 с понятным русским текстом, не прокидывая
+    внутренности наружу."""
+    from fastapi.responses import JSONResponse
+
+    logger.exception(
+        "unhandled_exception",
+        path=request.url.path,
+        method=request.method,
+        error=str(exc),
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Внутренняя ошибка сервера. Попробуйте ещё раз."},
+    )
+
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(tests.router)

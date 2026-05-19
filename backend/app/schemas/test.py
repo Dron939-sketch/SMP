@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.test import QuestionType
 
@@ -45,11 +45,28 @@ class TestRead(BaseModel):
 
 class AnswerSubmit(BaseModel):
     question_id: uuid.UUID
-    code: str
-    value: int | float | str | list[str] | None = None
-    text: str | None = None
+    code: str = Field(min_length=1, max_length=64)
+    # value: число (Лайкерт), строка-вариант (single_choice),
+    # массив строк (multiple_choice) или null. Размеры ограничены,
+    # чтобы случайный/злонамеренный ввод не положил БД.
+    value: int | float | str | list[str] | None = Field(default=None)
+    # Открытый текст. До 10 000 символов хватит на самый
+    # развёрнутый ответ; если кто-то вставит больше — обрезаем.
+    text: str | None = Field(default=None, max_length=10_000)
+
+    @field_validator("value")
+    @classmethod
+    def _cap_value(cls, v):  # type: ignore[no-untyped-def]
+        if isinstance(v, str):
+            return v[:1000]
+        if isinstance(v, list):
+            return [str(x)[:300] for x in v[:50]]
+        return v
     # сколько миллисекунд респондент думал именно над этим вопросом
-    time_spent_ms: int | None = Field(default=None, ge=0, le=1_000_000)
+    # До 2 часов на один вопрос — у нас есть открытые тексты, на
+    # которых респондент может реально подвисать. Аномалии всё равно
+    # видны через rushed_share / validity_flag.
+    time_spent_ms: int | None = Field(default=None, ge=0, le=2 * 3600 * 1000)
     # сколько раз менял ответ — индикатор сомнений
     revisions: int | None = Field(default=None, ge=0, le=200)
 

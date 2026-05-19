@@ -137,10 +137,14 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     setBusy(true);
     const finished = new Date();
     const totalMs = finished.getTime() - startedAtRef.current.getTime();
+    // Серверные лимиты: 4 ч на тест, 2 ч на вопрос. Подрезаем
+    // безопасно, чтобы 422-валидация никогда не падала.
+    const cap = (ms: number, maxMs: number) =>
+      Math.min(Math.max(0, Math.round(ms)), maxMs);
     const payload = {
       cycle_tag: cycleTag,
       respondent_name: respondentName.trim(),
-      total_time_ms: totalMs,
+      total_time_ms: cap(totalMs, 4 * 3600 * 1000),
       client_started_at: startedAtRef.current.toISOString(),
       client_finished_at: finished.toISOString(),
       answers: test.questions.map((q) => {
@@ -151,7 +155,7 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
           code: q.code,
           value: isText ? null : v,
           text: isText ? (typeof v === "string" ? v : null) : null,
-          time_spent_ms: Math.round(perQuestionMs[q.id] || 0),
+          time_spent_ms: cap(perQuestionMs[q.id] || 0, 2 * 3600 * 1000),
           revisions: revisions[q.id] || 0,
         };
       }),
