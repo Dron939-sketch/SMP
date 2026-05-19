@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { reports } from "../api/client";
+import { flagLabel, metricLabel, validityLabel } from "../labels";
 import type { ResponseDetail, ResponseListItem } from "../types";
 
 const ANCHOR_COLOR: Record<string, string> = {
@@ -116,54 +117,6 @@ export default function Reports() {
       {open && <DetailModal data={open} onClose={() => setOpen(null)} />}
     </div>
   );
-}
-
-const METRIC_LABELS: Record<string, string> = {
-  stress_index: "Стресс",
-  burnout_risk: "Риск выгорания",
-  work_life_balance: "Баланс работа/жизнь",
-  employer_brand: "Бренд работодателя",
-  leadership_trust: "Доверие к руководству",
-  safety_culture: "Культура безопасности",
-  career_clarity: "Понятность карьеры",
-  team_cohesion: "Сплочённость команды",
-  loyalty_intent: "Лояльность",
-  psychological_safety: "Психологическая безопасность",
-  conscientiousness: "Добросовестность",
-  openness: "Открытость новому",
-  learning_agility: "Обучаемость",
-};
-
-function metricLabel(key: string): string {
-  return METRIC_LABELS[key] || key;
-}
-
-const FLAG_LABELS: Record<string, string> = {
-  high_stress: "Высокий стресс",
-  low_safety_culture: "Низкая безопасность",
-  anchor_pretender: "Якорь под маской двигателя",
-  burnout_risk: "Риск выгорания",
-  low_loyalty: "Низкая лояльность",
-  low_trust: "Низкое доверие",
-};
-
-function flagLabel(flag: string): string {
-  return FLAG_LABELS[flag] || flag.replace(/_/g, " ");
-}
-
-function validityLabel(flag: string | null): string {
-  switch (flag) {
-    case "ok":
-      return "ок";
-    case "mixed":
-      return "смешано";
-    case "low_effort":
-      return "прокликал";
-    case "distracted":
-      return "отвлекался";
-    default:
-      return "—";
-  }
 }
 
 function DetailModal({

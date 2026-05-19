@@ -1,3 +1,4 @@
+import { flagLabel } from "../labels";
 import type { DashboardPayload } from "../types";
 
 interface Action {
@@ -125,7 +126,7 @@ function computeActions(data: DashboardPayload): Action[] {
     const [code, count] = topAlert;
     out.push({
       priority: "med",
-      title: `Разобрать частый сигнал: ${code.replace(/_/g, " ")} (${count}×)`,
+      title: `Разобрать частый сигнал: ${flagLabel(code)} (${count}×)`,
       detail: "Самый частый риск-флаг в текущем цикле — собрать аналитику по затронутым отделам.",
       when: "до пт",
     });
