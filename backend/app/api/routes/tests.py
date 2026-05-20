@@ -28,7 +28,16 @@ from app.schemas.test import (
 )
 from app.services.ai_service import AIService
 from app.services.alert_service import dispatch_alerts, evaluate
+from app.services.settings_service import get_setting
 from app.services.timing_service import analyze as analyze_timing
+
+
+async def _ensure_consent(db: AsyncSession, user: User) -> None:
+    """Кидает 403, если включён сбор согласия и юзер его ещё не дал."""
+    if not await get_setting(db, "consent_collection_enabled"):
+        return
+    if not user.consent_given:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "consent required")
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
 
@@ -268,8 +277,7 @@ async def submit_test(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    if not user.consent_given:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "consent required")
+    await _ensure_consent(db, user)
     test = (
         await db.execute(
             select(Test)
@@ -292,6 +300,7 @@ async def submit_shared(
     """Сабмит по shared-ссылке. Пользователь всё равно должен быть авторизован
     (иначе нечем «привязать» ответы к траектории), но передаёт `token`, что
     инкрементит счётчик использований ссылки."""
+    await _ensure_consent(db, user)
     link = (
         await db.execute(select(TestShareLink).where(TestShareLink.token == token))
     ).scalar_one_or_none()

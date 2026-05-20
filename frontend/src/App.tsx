@@ -101,7 +101,7 @@ export default function App() {
         element={
           user ? (
             <Layout user={user}>
-              <TestRunner />
+              <TestRunner user={user} onUserUpdate={setUser} />
             </Layout>
           ) : (
             <Navigate to="/login" replace />

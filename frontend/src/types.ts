@@ -143,6 +143,10 @@ export interface DashboardPayload {
   advisor: AdvisorOutput | null;
 }
 
+export interface AppSettings {
+  consent_collection_enabled: boolean;
+}
+
 export interface AssistantGreeting {
   name: string;
   text: string;

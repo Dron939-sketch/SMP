@@ -12,10 +12,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { dashboard } from "../api/client";
+import { admin, dashboard } from "../api/client";
 import { Jarvis } from "../components/Jarvis";
 import { MetricCard } from "../components/MetricCard";
-import type { DashboardPayload, User } from "../types";
+import type { AppSettings, DashboardPayload, User } from "../types";
 
 const ANCHOR_COLORS: Record<string, string> = {
   engine: "#10b981",
@@ -34,10 +34,32 @@ const SEVERITY_COLOR: Record<string, string> = {
 export default function Dashboard({ user }: { user: User }) {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+
+  const isAdmin = user.role === "admin";
 
   useEffect(() => {
     dashboard.political().then(setData).catch((e) => setErr(e.message));
-  }, []);
+    if (isAdmin) {
+      admin.getSettings().then(setSettings).catch(() => setSettings(null));
+    }
+  }, [isAdmin]);
+
+  const toggleConsent = async (next: boolean) => {
+    if (settingsBusy) return;
+    setSettingsBusy(true);
+    try {
+      const updated = await admin.updateSetting(
+        "consent_collection_enabled",
+        next
+      );
+      setSettings(updated);
+    } finally {
+      setSettingsBusy(false);
+    }
+  };
 
   if (err)
     return (
@@ -302,7 +324,121 @@ export default function Dashboard({ user }: { user: User }) {
             </ul>
           )}
         </div>
+
+        {isAdmin && (
+          <div className="card space-y-3">
+            <div className="label">Администрирование</div>
+            <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!!settings?.consent_collection_enabled}
+                disabled={!settings || settingsBusy}
+                onChange={(e) => toggleConsent(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                Собирать согласие на обработку ПДн перед прохождением теста
+                <div className="text-xs text-slate-500">
+                  Если выключено — модалка не показывается, бэк не требует
+                  согласия. Используется, если у заказчика по регламенту
+                  согласие собирается вне приложения.
+                </div>
+              </span>
+            </label>
+            <div className="border-t border-white/5 pt-3 space-y-2">
+              <div className="text-sm font-medium text-amber-300">
+                Опасная зона
+              </div>
+              <p className="text-xs text-slate-500">
+                Полностью удалит ответы, анализы, тесты, share-ссылки, аудит
+                и всех пользователей кроме вас. Используется для очистки перед
+                передачей заказчику. Откатить нельзя.
+              </p>
+              <button
+                className="btn-ghost text-sm border border-red-500/40 text-red-300 hover:bg-red-500/10"
+                onClick={() => setResetOpen(true)}
+              >
+                Сбросить все метрики
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
+
+      {resetOpen && (
+        <ResetConfirmModal
+          onClose={() => setResetOpen(false)}
+          onConfirmed={() => {
+            setResetOpen(false);
+            // После полного wipe проще всего перезагрузить страницу,
+            // чтобы ре-фетчнуть всё с нуля.
+            window.location.reload();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ResetConfirmModal({
+  onClose,
+  onConfirmed,
+}: {
+  onClose: () => void;
+  onConfirmed: () => void;
+}) {
+  const [phrase, setPhrase] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const ready = phrase.trim() === "СБРОС";
+
+  const doReset = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await admin.reset();
+      onConfirmed();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm grid place-items-center p-4 z-50">
+      <div className="card max-w-md w-full space-y-4 border-red-500/40">
+        <h2 className="text-xl font-semibold text-red-300">
+          Сброс всех данных
+        </h2>
+        <p className="text-sm text-slate-300">
+          Будут безвозвратно удалены все ответы, анализы, тесты, share-ссылки,
+          журнал аудита и все пользователи, кроме вашей учётной записи. Для
+          подтверждения введите слово <code className="text-red-300">СБРОС</code>{" "}
+          в поле ниже.
+        </p>
+        <input
+          autoFocus
+          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
+          placeholder="СБРОС"
+          value={phrase}
+          onChange={(e) => setPhrase(e.target.value)}
+          disabled={busy}
+        />
+        {err && <div className="text-sm text-smp-crit">{err}</div>}
+        <div className="flex justify-end gap-2">
+          <button className="btn-ghost" onClick={onClose} disabled={busy}>
+            Отмена
+          </button>
+          <button
+            className="btn-primary bg-red-500 hover:bg-red-400"
+            disabled={!ready || busy}
+            onClick={doReset}
+          >
+            {busy ? "Удаляю…" : "Удалить всё"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

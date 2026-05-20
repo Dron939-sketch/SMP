@@ -95,7 +95,14 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     if (!allAnswered || busy) return;
     setBusy(true);
     const finished = new Date();
-    const totalMs = finished.getTime() - startedAtRef.current.getTime();
+    // Потолки согласованы с pydantic-валидацией на бэке (см. schemas/test.py),
+    // чтобы редкие пограничные случаи не валили сабмит с HTTP 422.
+    const MAX_PER_Q_MS = 3_600_000; // 1 ч на вопрос
+    const MAX_TOTAL_MS = 4 * 3_600_000; // 4 ч на тест
+    const totalMs = Math.min(
+      finished.getTime() - startedAtRef.current.getTime(),
+      MAX_TOTAL_MS
+    );
     const payload = {
       cycle_tag: cycleTag,
       total_time_ms: totalMs,
@@ -109,7 +116,10 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
           code: q.code,
           value: isText ? null : v,
           text: isText ? (typeof v === "string" ? v : null) : null,
-          time_spent_ms: Math.round(perQuestionMs[q.id] || 0),
+          time_spent_ms: Math.min(
+            Math.round(perQuestionMs[q.id] || 0),
+            MAX_PER_Q_MS
+          ),
           revisions: revisions[q.id] || 0,
         };
       }),

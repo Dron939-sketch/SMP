@@ -1,4 +1,5 @@
 import type {
+  AppSettings,
   AssistantAskResponse,
   AssistantGreeting,
   AssistantMessage,
@@ -86,6 +87,19 @@ export const dashboard = {
     request<unknown>(`/api/dashboard/advisor/refresh`, { method: "POST" }),
   exportXlsx: (cycle_tag?: string) =>
     `/api/dashboard/export/xlsx${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`,
+};
+
+export const admin = {
+  getSettings: () => request<AppSettings>("/api/admin/settings"),
+  updateSetting: (key: keyof AppSettings, value: AppSettings[keyof AppSettings]) =>
+    request<AppSettings>(`/api/admin/settings/${key}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
+  reset: () =>
+    request<{ deleted: Record<string, number> }>("/api/admin/reset", {
+      method: "POST",
+    }),
 };
 
 export const assistant = {
