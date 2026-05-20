@@ -62,13 +62,15 @@ class AnswerSubmit(BaseModel):
         if isinstance(v, list):
             return [str(x)[:300] for x in v[:50]]
         return v
-    # сколько миллисекунд респондент думал именно над этим вопросом
     # До 2 часов на один вопрос — у нас есть открытые тексты, на
     # которых респондент может реально подвисать. Аномалии всё равно
     # видны через rushed_share / validity_flag.
     time_spent_ms: int | None = Field(default=None, ge=0, le=2 * 3600 * 1000)
-    # сколько раз менял ответ — индикатор сомнений
-    revisions: int | None = Field(default=None, ge=0, le=200)
+    # сколько раз менял ответ — индикатор сомнений.
+    # Это служебная метрика: чтобы случайные «качели» по варианту ответа
+    # не валили сабмит всего теста, верхняя граница широкая. Фронт
+    # тоже клампит счётчик в TestForm, чтобы значения не уходили за потолок.
+    revisions: int | None = Field(default=None, ge=0, le=10_000)
 
 
 class TestSubmitRequest(BaseModel):
