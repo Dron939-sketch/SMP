@@ -1,4 +1,5 @@
 import type {
+  AppSettings,
   AssistantAskResponse,
   AssistantGreeting,
   AssistantMessage,
@@ -102,6 +103,33 @@ export const reports = {
   },
   get: (id: string) =>
     request<ResponseDetail>(`/api/reports/responses/${id}`),
+};
+
+export const settings = {
+  get: () => request<AppSettings>("/api/admin/settings"),
+  update: (
+    key: keyof AppSettings,
+    value: AppSettings[keyof AppSettings],
+    adminToken: string
+  ) =>
+    request<AppSettings>(`/api/admin/settings/${key}`, {
+      method: "PUT",
+      headers: { "X-Admin-Token": adminToken },
+      body: JSON.stringify({ value }),
+    }),
+};
+
+export const admin = {
+  wipeResponses: (adminToken: string) =>
+    request<{ deleted_responses: number; deleted_analyses: number }>(
+      "/api/admin/wipe-responses",
+      { method: "POST", headers: { "X-Admin-Token": adminToken } }
+    ),
+  wipeShareLinks: (adminToken: string) =>
+    request<{ deleted_share_links: number }>(
+      "/api/admin/wipe-share-links",
+      { method: "POST", headers: { "X-Admin-Token": adminToken } }
+    ),
 };
 
 export const assistant = {

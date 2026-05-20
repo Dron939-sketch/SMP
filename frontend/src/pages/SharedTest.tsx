@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { tests } from "../api/client";
+import { settings as settingsApi, tests } from "../api/client";
+import {
+  ConsentModal,
+  hasLocalConsent,
+} from "../components/ConsentModal";
 import { TestForm } from "../components/TestForm";
 import type { Test } from "../types";
 
@@ -8,16 +12,25 @@ import type { Test } from "../types";
  * Страница теста по shared-ссылке.
  * Минимум интерфейса: только тест → отправить → «Спасибо!».
  * Логин не требуется — бэкенд в демо-режиме принимает анонимный submit.
+ * Если включён тумблер сбора согласия — сначала модалка с согласием.
  */
 export default function SharedTest() {
   const { token } = useParams<{ token: string }>();
   const [test, setTest] = useState<Test | null>(null);
+  const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
+  const [consentAccepted, setConsentAccepted] = useState<boolean>(
+    hasLocalConsent()
+  );
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
     tests.getShared(token).then(setTest).catch((e) => setErr(e.message));
+    settingsApi
+      .get()
+      .then((s) => setConsentRequired(s.consent_collection_enabled))
+      .catch(() => setConsentRequired(true));
   }, [token]);
 
   if (err)
@@ -30,7 +43,7 @@ export default function SharedTest() {
       </div>
     );
 
-  if (!test)
+  if (!test || consentRequired === null)
     return (
       <div className="min-h-screen grid place-items-center text-slate-400">
         Загрузка теста…
@@ -53,6 +66,8 @@ export default function SharedTest() {
       </div>
     );
   }
+
+  const needConsent = consentRequired && !consentAccepted;
 
   return (
     <div className="min-h-screen bg-smp-ink text-slate-100 p-4 sm:p-8">
@@ -79,6 +94,18 @@ export default function SharedTest() {
             setDone(true);
           }}
         />
+
+        {needConsent && (
+          <ConsentModal
+            onCancel={() => {
+              // Если отказался — просто закрываем вкладку-эквивалент:
+              // вернёмся на начальный экран (можно было бы и сразу
+              // window.close(), но не во всех браузерах сработает).
+              window.location.href = "/";
+            }}
+            onAccept={() => setConsentAccepted(true)}
+          />
+        )}
       </div>
     </div>
   );
