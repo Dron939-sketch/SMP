@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 import structlog
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
@@ -79,6 +80,39 @@ app.add_middleware(
     allow_credentials=True,
 )
 app.add_middleware(UsageTrackingMiddleware)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_exception(request, exc: RequestValidationError):  # type: ignore[no-untyped-def]
+    """422-валидация — в лог: какое поле, какой код, что прислали.
+    Без этого диагностировать падающие submit вслепую очень тяжело."""
+    from fastapi.responses import JSONResponse
+
+    # exc.errors() безопасен для логирования: pydantic чистит «input»
+    # от больших значений, но на всякий случай ограничим длину.
+    errs = []
+    for e in exc.errors()[:10]:
+        item = {"loc": e.get("loc"), "type": e.get("type"), "msg": e.get("msg")}
+        inp = e.get("input")
+        if isinstance(inp, str):
+            item["input_preview"] = inp[:120]
+            item["input_len"] = len(inp)
+        elif isinstance(inp, list | dict):
+            item["input_kind"] = type(inp).__name__
+            item["input_len"] = len(inp)
+        else:
+            item["input"] = inp
+        errs.append(item)
+    logger.warning(
+        "request_validation_failed",
+        path=request.url.path,
+        method=request.method,
+        errors=errs,
+    )
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
 
 
 @app.exception_handler(Exception)
