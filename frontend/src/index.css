@@ -14,45 +14,107 @@ body,
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv11", "ss01", "ss03";
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
-  /* поддержка safe-area для iPhone */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgba(56, 189, 248, 0.07) 0%, transparent 60%),
+    radial-gradient(60% 40% at 0% 100%, rgba(234, 179, 8, 0.04) 0%, transparent 70%),
+    #070b16;
+  background-attachment: fixed;
 }
 
-/* На мобильных шкала Лайкерта и кнопки должны быть с тач-таргетом ≥44px */
 button, a, input, select, textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
 .card {
-  @apply bg-smp-panel rounded-2xl p-4 sm:p-5 border border-white/5 shadow-lg;
+  @apply rounded-2xl p-4 sm:p-5 border border-white/10;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 60%),
+              linear-gradient(180deg, #131b30 0%, #0d1424 100%);
+  box-shadow:
+    0 1px 0 0 rgba(255,255,255,0.04) inset,
+    0 16px 32px -16px rgba(0,0,0,0.6),
+    0 4px 12px -4px rgba(0,0,0,0.4);
 }
+.card-accent {
+  position: relative;
+  overflow: hidden;
+}
+.card-accent::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(56,189,248,0.5), rgba(234,179,8,0.3), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
 .label {
-  @apply text-xs uppercase tracking-wider text-slate-400;
+  @apply text-[10px] uppercase tracking-[0.16em] text-slate-400 font-medium;
 }
 .btn {
-  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 sm:py-2 font-medium transition select-none;
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium transition select-none;
   min-height: 44px;
 }
 .btn-primary {
-  @apply btn bg-smp-accent text-slate-900 hover:bg-cyan-300 active:bg-cyan-400;
+  @apply btn text-slate-900;
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  box-shadow: 0 4px 16px -4px rgba(56,189,248,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
 }
+.btn-primary:hover { filter: brightness(1.08); }
 .btn-ghost {
-  @apply btn bg-white/5 text-slate-100 hover:bg-white/10 active:bg-white/15;
+  @apply btn text-slate-100;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
 }
+.btn-ghost:hover { background: rgba(255,255,255,0.08); }
+
 .chip {
   @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
 }
 
-/* Скроллбары — тонкие, ненавязчивые */
+.kpi-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.kpi-gradient {
+  background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 110%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
 @media (max-width: 640px) {
   .hide-mobile { display: none; }
+}
+
+/* iOS Safari: 100vh скачет при появлении/исчезновении адресной
+   строки. Используем dvh там, где нужна точная высота. */
+@supports (height: 100dvh) {
+  .min-h-screen-safe {
+    min-height: 100dvh;
+  }
+}
+.min-h-screen-safe {
+  min-height: 100vh;
+}
+
+/* На iPhone модалки не должны прижиматься к notch — добавляем
+   safe-area-inset на fixed overlay. */
+.modal-overlay {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }

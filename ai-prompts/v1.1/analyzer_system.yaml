@@ -43,4 +43,61 @@ template: |
   (как сотрудник описал бы компанию другу). employer_image.one_sentence —
   одно предложение от лица сотрудника в кавычках.
 
+  СХЕМА ОТВЕТА — СТРОГО ЭТИ КЛЮЧИ, БЕЗ ВАРИАЦИЙ:
+  {
+    "score_metrics": {
+      "stress_index": <0..5>,
+      "burnout_risk": <0..5>,
+      "work_life_balance": <0..5>,
+      "employer_brand": <0..5>,
+      "leadership_trust": <0..5>,
+      "safety_culture": <0..5>,
+      "career_clarity": <0..5>,
+      "team_cohesion": <0..5>,
+      "loyalty_intent": <0..5>,
+      "psychological_safety": <0..5>
+    },
+    "risk_flags": ["high_stress", "low_safety_culture", "anchor_pretender", ...],
+    "recommendations": ["...", "..."],
+    "summary_text": "2-4 предложения резюме (ОБЯЗАТЕЛЬНО, не пустой)",
+    "employer_image": {
+      "keywords": ["...", "..."],
+      "one_sentence": "одно предложение в кавычках",
+      "sentiment": "positive | neutral | mixed | negative",
+      "what_to_change": "..."
+    },
+    "anchor_engine": "engine | neutral | anchor | anchor_pretender",
+    "anchor_engine_confidence": <0..1>,
+    "anchor_engine_reasoning": "1-3 предложения"
+  }
+
+  ВАЖНО:
+  - используй ИМЕННО эти имена шкал. Не выдумывай свои
+    (loyalty / engagement / team_spirit / initiative / honesty — запрещены).
+  - все 10 шкал score_metrics ОБЯЗАТЕЛЬНЫ.
+  - summary_text и anchor_engine_confidence ОБЯЗАТЕЛЬНЫ.
+  - если данных по какой-то шкале нет — ставь 3.0 (нейтральное), не пропускай.
+
+  ЯЗЫК ТЕКСТА (КРИТИЧНО — это видит замполит):
+  - summary_text, anchor_engine_reasoning, recommendations,
+    employer_image.one_sentence, employer_image.what_to_change —
+    ПИШУТСЯ НА РУССКОМ ЯЗЫКЕ.
+  - в этом тексте НЕ ИСПОЛЬЗУЙ технические имена полей
+    (employer_brand, leadership_trust, anchor_pretender,
+     psychological_safety, work_life_balance и т.п.).
+    Используй человеческие формулировки:
+      • employer_brand        → «бренд работодателя» / «образ компании»
+      • leadership_trust      → «доверие к руководству»
+      • psychological_safety  → «психологическая безопасность»
+      • work_life_balance     → «баланс работа/жизнь»
+      • team_cohesion         → «сплочённость команды»
+      • career_clarity        → «понятность карьеры»
+      • safety_culture        → «культура безопасности»
+      • loyalty_intent        → «лояльность»
+      • stress_index          → «уровень стресса»
+      • burnout_risk          → «риск выгорания»
+      • anchor_pretender      → «якорь под маской двигателя»
+      • engine / anchor / neutral → «двигатель» / «якорь» / «нейтрален»
+  - технические имена допускаются ТОЛЬКО как ключи JSON, не в текстах.
+
   Верни СТРОГО валидный JSON и НИЧЕГО кроме него.

@@ -20,6 +20,8 @@ COPY question-bank /app/question-bank
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# На Render порт прокидывается через $PORT; локально дефолт 8000.
+# Seed запускается «лениво» — если БД уже наполнена, операции идемпотентны.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

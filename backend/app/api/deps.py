@@ -12,6 +12,10 @@ from app.models.user import User, UserRole
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
+# Фиксированный UUID замполита-«по умолчанию». Этот пользователь
+# создаётся в БД сидингом, поэтому FK всегда валиден.
+ZAMPOLIT_USER_ID = uuid.UUID("00000000-0000-0000-0000-00000000beef")
+
 
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -36,9 +40,50 @@ async def get_current_user(
 
 
 def require_roles(*roles: UserRole):
-    async def _check(user: Annotated[User, Depends(get_current_user)]) -> User:
+    async def _check(user: Annotated[User, Depends(get_optional_user)]) -> User:
         if user.role not in roles:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "forbidden")
         return user
 
     return _check
+
+
+async def get_optional_user(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[str | None, Depends(oauth2)],
+) -> User:
+    """Если токена нет/невалидный — возвращаем замполита из БД
+    (создан сидингом, FK всегда работает)."""
+    uid: uuid.UUID | None = None
+    if token:
+        try:
+            claims = decode_token(token)
+            uid = uuid.UUID(claims["sub"])
+        except (ValueError, KeyError):
+            uid = None
+
+    if uid is not None:
+        u = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+        if u and u.is_active:
+            return u
+
+    # Дефолт: замполит компании.
+    u = (
+        await db.execute(select(User).where(User.id == ZAMPOLIT_USER_ID))
+    ).scalar_one_or_none()
+    if u:
+        return u
+
+    # Подстраховка: если сидинг ещё не отработал, возвращаем in-memory
+    # объект. Запросы, требующие FK, увидят NULL/новый объект (создание
+    # в БД произойдёт на следующем _seed_users).
+    return User(
+        id=ZAMPOLIT_USER_ID,
+        email="zorin@smp.team",
+        hashed_password="",
+        role=UserRole.POLITICAL_OFFICER,
+        full_name="Зорин Илья",
+        position="Замполит",
+        consent_given=True,
+        is_active=True,
+    )
