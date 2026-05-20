@@ -75,7 +75,11 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     setAnswers((a) => {
       const had = activeQ.id in a;
       if (had) {
-        setRevisions((r) => ({ ...r, [activeQ.id]: (r[activeQ.id] || 0) + 1 }));
+        setRevisions((r) => ({
+          ...r,
+          // потолок согласован с бэком (le=10_000), чтобы сабмит не падал на 422
+          [activeQ.id]: Math.min((r[activeQ.id] || 0) + 1, 10_000),
+        }));
       }
       return { ...a, [activeQ.id]: v };
     });

@@ -47,8 +47,10 @@ class AnswerSubmit(BaseModel):
     text: str | None = None
     # сколько миллисекунд респондент думал именно над этим вопросом
     time_spent_ms: int | None = Field(default=None, ge=0, le=1_000_000)
-    # сколько раз менял ответ — индикатор сомнений
-    revisions: int | None = Field(default=None, ge=0, le=200)
+    # сколько раз менял ответ — индикатор сомнений.
+    # Это служебная метрика: чтобы случайные «качели» по варианту ответа
+    # не валили сабмит всего теста, верхняя граница широкая.
+    revisions: int | None = Field(default=None, ge=0, le=10_000)
 
 
 class TestSubmitRequest(BaseModel):
