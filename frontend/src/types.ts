@@ -222,6 +222,10 @@ export interface DashboardPayload {
   total_unique_respondents: number;
 }
 
+export interface AppSettings {
+  consent_collection_enabled: boolean;
+}
+
 export interface AssistantGreeting {
   name: string;
   text: string;

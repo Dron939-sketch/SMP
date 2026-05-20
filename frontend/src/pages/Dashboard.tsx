@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { dashboard } from "../api/client";
 import { AboutSystem } from "../components/AboutSystem";
+import { AdminPanel } from "../components/AdminPanel";
 import { CompanyPhaseBadge } from "../components/CompanyPhaseBadge";
 import { DashboardSkeleton } from "../components/DashboardSkeleton";
 import { DepartmentHeatmap } from "../components/DepartmentHeatmap";
@@ -299,6 +300,8 @@ export default function Dashboard({ user }: { user: User }) {
             </ul>
           )}
         </div>
+
+        <AdminPanel />
       </aside>
     </div>
   );

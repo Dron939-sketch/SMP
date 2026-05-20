@@ -1,8 +1,13 @@
-"""Эндпоинты для разовых служебных операций. Защищены ADMIN_TOKEN."""
+"""Эндпоинты для разовых служебных операций. Защищены ADMIN_TOKEN.
 
-from typing import Annotated
+GET /settings — публичный (фронт должен знать, показывать ли модалку
+согласия). PUT /settings/{key} и wipe-* — за X-Admin-Token.
+"""
+
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +16,17 @@ from app.database import get_db
 from app.models.analysis import AnalysisResult
 from app.models.audit import TestShareLink
 from app.models.response import TestResponse
+from app.services.settings_service import (
+    DEFAULTS,
+    get_all_settings,
+    set_setting,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+class AppSettingUpdate(BaseModel):
+    value: Any
 
 
 def _check_admin(token: str | None) -> None:
@@ -71,3 +85,30 @@ async def wipe_share_links(
     await db.execute(delete(TestShareLink))
     await db.commit()
     return {"deleted_share_links": int(before), "status": "ok"}
+
+
+@router.get("/settings")
+async def get_settings_endpoint(
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Публично-читаемые настройки. Без токена: фронту нужно знать,
+    надо ли показывать модалку согласия на ПДн перед тестом.
+    Сами значения секретов сюда не попадают (см. DEFAULTS)."""
+    return await get_all_settings(db)
+
+
+@router.put("/settings/{key}")
+async def update_setting_endpoint(
+    key: str,
+    payload: AppSettingUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    x_admin_token: Annotated[str | None, Header()] = None,
+):
+    """Обновить настройку. Только за X-Admin-Token. Ключи из белого списка
+    (DEFAULTS) — чтобы через эту дверь не подсунули мусорный ключ."""
+    _check_admin(x_admin_token)
+    if key not in DEFAULTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"unknown setting: {key}")
+    await set_setting(db, key, payload.value, actor_label="admin_token")
+    await db.commit()
+    return await get_all_settings(db)
