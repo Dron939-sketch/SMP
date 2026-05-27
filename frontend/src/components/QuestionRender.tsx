@@ -99,8 +99,9 @@ export function QuestionRender({
       return (
         <textarea
           value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value.slice(0, 10000))}
           rows={4}
+          maxLength={10000}
           className="w-full bg-black/40 rounded-xl px-4 py-3 border border-white/10 text-sm"
           placeholder="Напишите своими словами…"
         />

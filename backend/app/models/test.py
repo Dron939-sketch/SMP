@@ -24,7 +24,10 @@ class Test(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # description = легенда для сотрудников ("обложка"), real_focus = что
+    # реально замеряет тест (видит только замполит/админ).
     description: Mapped[str | None] = mapped_column(Text)
+    real_focus: Mapped[str | None] = mapped_column(Text)
 
     cycle: Mapped[str] = mapped_column(String(32), default="monthly")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

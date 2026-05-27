@@ -75,12 +75,12 @@ class SpeakRequest(BaseModel):
 @router.get("/greeting", response_model=GreetingResponse)
 async def greeting(user: Annotated[User, Depends(_ASSISTANT_ROLES)]):
     s = get_settings()
-    name_part = user.full_name.split()[0] if user.full_name else "командор"
     text = (
-        f"Привет, {name_part}! Меня зовут {s.assistant_name}. "
-        "Я твой персональный помощник. Можешь задать вопрос голосом — "
-        "нажми микрофон, или просто напиши в поисковике. Я подключён к "
-        "DeepSeek и вижу текущие метрики компании."
+        f"Здравствуйте. Я {s.assistant_name}. Метрики компании передо мной. "
+        "Я имею доступ к базе знаний. Загрузите критически важную "
+        "информацию: стратегию, оргструктуру, текущие риски. После этого "
+        "я стану не помощником, а вашим «рентгеном» бизнеса — буду "
+        "освещать истинное настроение и неочевидные угрозы."
     )
     return GreetingResponse(
         name=s.assistant_name,

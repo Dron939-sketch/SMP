@@ -7,6 +7,7 @@ interface Props {
   cycleTag: string;
   onSubmit: (payload: {
     cycle_tag: string;
+    respondent_name: string;
     answers: {
       question_id: string;
       code: string;
@@ -29,11 +30,14 @@ interface Props {
  *   - паузы (>30с без взаимодействия) не засчитываются.
  */
 export function TestForm({ test, cycleTag, onSubmit }: Props) {
+  const [respondentName, setRespondentName] = useState("");
+  const [stage, setStage] = useState<"name" | "questions">("name");
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [perQuestionMs, setPerQuestionMs] = useState<Record<string, number>>({});
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [activeIdx, setActiveIdx] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startedAtRef = useRef<Date>(new Date());
   const lastTickRef = useRef<number>(Date.now());
@@ -74,27 +78,80 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     if (!activeQ) return;
     setAnswers((a) => {
       const had = activeQ.id in a;
-      if (had) {
-        setRevisions((r) => ({ ...r, [activeQ.id]: (r[activeQ.id] || 0) + 1 }));
+      // Для open_text каждый keystroke шлёт onChange — считать это
+      // «ревизией» бессмысленно (на длинных текстах счётчик улетает
+      // за тысячу). Засчитываем revision только для дискретных типов.
+      // Дополнительно клампим до 10_000 в согласии с бэком (le=10_000).
+      if (had && activeQ.question_type !== "open_text") {
+        setRevisions((r) => ({
+          ...r,
+          [activeQ.id]: Math.min((r[activeQ.id] || 0) + 1, 10_000),
+        }));
       }
       return { ...a, [activeQ.id]: v };
     });
     lastActiveRef.current = Date.now();
+
+    // Автопереход к следующему вопросу для одиночных кликов.
+    if (
+      activeQ.question_type === "likert_5" ||
+      activeQ.question_type === "single_choice"
+    ) {
+      const next = activeIdx + 1;
+      if (next < total) {
+        window.setTimeout(() => setActiveIdx(next), 220);
+      }
+    }
+  };
+
+  const isAnswered = (q: { id: string; question_type: string }) => {
+    const v = answers[q.id];
+    if (v == null) return false;
+    if (typeof v === "string") return v.trim().length > 0;
+    if (Array.isArray(v)) return v.length > 0;
+    return true;
   };
 
   const allAnswered = useMemo(
-    () => test.questions.every((q) => !q.is_required || answers[q.id] != null && answers[q.id] !== ""),
+    () => test.questions.every((q) => !q.is_required || isAnswered(q)),
+    [answers, test.questions]
+  );
+
+  const missingIndices = useMemo(
+    () =>
+      test.questions
+        .map((q, i) => ({ i, q }))
+        .filter(({ q }) => q.is_required && !isAnswered(q))
+        .map(({ i }) => i),
     [answers, test.questions]
   );
 
   const handleSubmit = async () => {
-    if (!allAnswered || busy) return;
+    setError(null);
+    if (!allAnswered) {
+      const first = missingIndices[0];
+      if (first !== undefined) {
+        setActiveIdx(first);
+        setError(
+          `Не заполнено ${missingIndices.length} ${
+            missingIndices.length === 1 ? "вопрос" : "вопросов"
+          }. Открыл первый из них.`
+        );
+      }
+      return;
+    }
+    if (busy) return;
     setBusy(true);
     const finished = new Date();
     const totalMs = finished.getTime() - startedAtRef.current.getTime();
+    // Серверные лимиты: 4 ч на тест, 2 ч на вопрос. Подрезаем
+    // безопасно, чтобы 422-валидация никогда не падала.
+    const cap = (ms: number, maxMs: number) =>
+      Math.min(Math.max(0, Math.round(ms)), maxMs);
     const payload = {
       cycle_tag: cycleTag,
-      total_time_ms: totalMs,
+      respondent_name: respondentName.trim(),
+      total_time_ms: cap(totalMs, 4 * 3600 * 1000),
       client_started_at: startedAtRef.current.toISOString(),
       client_finished_at: finished.toISOString(),
       answers: test.questions.map((q) => {
@@ -105,21 +162,59 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
           code: q.code,
           value: isText ? null : v,
           text: isText ? (typeof v === "string" ? v : null) : null,
-          time_spent_ms: Math.round(perQuestionMs[q.id] || 0),
+          time_spent_ms: cap(perQuestionMs[q.id] || 0, 2 * 3600 * 1000),
           revisions: revisions[q.id] || 0,
         };
       }),
     };
     try {
       await onSubmit(payload);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`Не удалось отправить: ${msg}`);
     } finally {
       setBusy(false);
     }
   };
 
-  if (!activeQ) return null;
+  if (stage === "name") {
+    const valid = respondentName.trim().length >= 2;
+    return (
+      <form
+        className="card max-w-lg mx-auto space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) {
+            startedAtRef.current = new Date();
+            lastTickRef.current = Date.now();
+            lastActiveRef.current = Date.now();
+            setStage("questions");
+          }
+        }}
+      >
+        <div>
+          <div className="label">Перед началом</div>
+          <h2 className="text-xl font-semibold mt-1">Как вас зовут?</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Фамилия Имя Отчество — нужно для учёта прохождения.
+            Линейные руководители имена не видят, только агрегаты.
+          </p>
+        </div>
+        <input
+          autoFocus
+          value={respondentName}
+          onChange={(e) => setRespondentName(e.target.value)}
+          placeholder="Иванов Иван Иванович"
+          className="w-full bg-black/40 rounded-xl px-4 py-3 border border-white/10"
+        />
+        <button type="submit" className="btn-primary w-full" disabled={!valid}>
+          Начать тест →
+        </button>
+      </form>
+    );
+  }
 
-  const elapsedSec = Math.round(perQuestionMs[activeQ.id] || 0) / 1000;
+  if (!activeQ) return null;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -127,9 +222,6 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
         <div className="flex items-center justify-between mb-2">
           <div className="label">
             Вопрос {activeIdx + 1} из {total}
-          </div>
-          <div className="text-xs text-slate-500">
-            на этом вопросе: {elapsedSec.toFixed(1)}с
           </div>
         </div>
         <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -172,17 +264,23 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
           <button
             className="btn-primary"
             onClick={handleSubmit}
-            disabled={!allAnswered || busy}
+            disabled={busy}
           >
-            {busy ? "Отправляю…" : "Завершить тест"}
+            {busy
+              ? "Отправляю…"
+              : allAnswered
+              ? "Завершить тест"
+              : `Заполнить ещё ${missingIndices.length}`}
           </button>
         )}
       </div>
 
-      <div className="text-xs text-slate-500 text-center">
-        Время на каждом вопросе и общее время учитываются для оценки
-        качества ответов. Это анонимная служебная метрика.
-      </div>
+      {error && (
+        <div className="rounded-xl border border-smp-crit/30 bg-red-500/10 text-red-200 text-sm px-3 py-2">
+          {error}
+        </div>
+      )}
+
     </div>
   );
 }

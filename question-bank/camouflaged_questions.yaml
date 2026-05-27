@@ -138,3 +138,72 @@ questions:
     type: likert_5
     hidden_metrics: { career_clarity: 0.5, psychological_safety: 0.5 }
     reverse_scored: true
+
+  # ---------- Big Five (адаптация IPIP, замаскированный вид) ----------
+  # Conscientiousness — добросовестность (лучший предиктор результативности).
+  - code: Q_BF_PLAN_AHEAD
+    display_text: "Когда вам ставят новую задачу, что вы делаете в первый час?"
+    type: single_choice
+    options:
+      - "Расписываю шаги и проверяю узкие места"
+      - "Беру самое срочное и двигаюсь"
+      - "Жду уточнений от руководителя"
+      - "Смотрю, кто что делает, чтобы не дублировать"
+    hidden_metrics: { conscientiousness: 0.8 }
+
+  - code: Q_BF_FOLLOW_THROUGH
+    display_text: "Насколько часто доводите начатое до конца даже когда теряете интерес?"
+    type: likert_5
+    hidden_metrics: { conscientiousness: 0.7, loyalty_intent: 0.3 }
+
+  - code: Q_BF_DEADLINE_HABITS
+    display_text: "Дедлайн через неделю. Когда обычно начинаете работу?"
+    type: single_choice
+    options:
+      - "В тот же день — лучше с запасом"
+      - "Через 1–2 дня после получения"
+      - "Ближе к середине срока"
+      - "В последние дни — так получается продуктивнее"
+    hidden_metrics: { conscientiousness: 0.7 }
+
+  # Openness — открытость новому (предиктор learning agility / роста).
+  - code: Q_BF_NEW_TECH
+    display_text: "На объекте начинают использовать новую технологию. Ваша реакция?"
+    type: single_choice
+    options:
+      - "Сразу читаю/смотрю, как работает"
+      - "Жду, пока коллеги попробуют первыми"
+      - "Освою по факту, когда дойдёт до меня"
+      - "Стараюсь работать по-старому"
+    hidden_metrics: { openness: 0.8 }
+
+  - code: Q_BF_QUESTION_RULES
+    display_text: "Видите, что регламент устарел. Что делаете?"
+    type: single_choice
+    options:
+      - "Пишу предложение, как улучшить"
+      - "Обсуждаю с коллегами, выработаем общее мнение"
+      - "Делаю по регламенту — не моя зона"
+      - "Делаю как считаю нужным, никому не говорю"
+    hidden_metrics: { openness: 0.6, psychological_safety: 0.4 }
+
+  # Learning Agility — обучаемость на опыте.
+  - code: Q_LA_AFTER_MISTAKE
+    display_text: "После рабочей ошибки, в которой видна ваша роль, что чаще всего делаете?"
+    type: single_choice
+    options:
+      - "Разбираю, что именно пошло не так, и переделываю свой подход"
+      - "Обсуждаю с коллегами — выясняем общую причину"
+      - "Стараюсь больше так не делать, без долгих разборов"
+      - "Списываю на обстоятельства и двигаюсь дальше"
+    hidden_metrics: { learning_agility: 0.8 }
+
+  - code: Q_LA_FEEDBACK_RESPONSE
+    display_text: "Получили резкую критику от руководителя. Через час вы…"
+    type: single_choice
+    options:
+      - "Уже думаю, что конкретно поменять"
+      - "Перевариваю эмоционально, но потом разберу"
+      - "Считаю, что в основном придрались"
+      - "Просто стараюсь не попадаться на глаза"
+    hidden_metrics: { learning_agility: 0.7, psychological_safety: 0.3 }

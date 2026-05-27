@@ -1,5 +1,22 @@
 # Развёртывание
 
+## Render (одной кнопкой)
+
+В репозитории лежит `render.yaml` (Blueprint). В Render Dashboard:
+1. **New → Blueprint** → подключить репозиторий `Dron939-sketch/SMP`.
+2. Render создаст 4 ресурса: managed Postgres, Redis, backend (Docker)
+   и frontend (Static).
+3. В свежесозданном backend-сервисе → **Environment** → задать секреты
+   (`DEEPSEEK_API_KEY`, `FISH_AUDIO_API_KEY`, `FISH_AUDIO_VOICE_ID`,
+   `DEEPGRAM_API_KEY`, `TAVILY_API_KEY`, `VK_SERVICE_TOKEN` и т.д.) —
+   они помечены `sync: false` и не лежат в репо.
+4. После первого деплоя backend сам выполнит `python -m app.seed` →
+   создадутся демо-учётки (см. ниже).
+
+Если деплой падает с `could not find Cargo.toml` — Render по ошибке
+выбрал Rust-runtime. Убедитесь, что в Dashboard выбран блюпринт
+(`render.yaml`), а не дефолтный «Rust web service».
+
 ## Локально
 ```bash
 cp .env.example .env  # заполнить DEEPSEEK_API_KEY, FISH_AUDIO_*, VK_SERVICE_TOKEN
@@ -13,10 +30,10 @@ docker compose exec backend python -m app.seed   # одноразовый seed
 ## Демо-учётки (после seed)
 | Роль                | Email              | Пароль       |
 |---------------------|--------------------|--------------|
-| Замполит (Зорин)    | zorin@smp.local    | zorin12345   |
-| Админ               | admin@smp.local    | admin12345   |
-| Менеджер участка    | manager@smp.local  | manager12345 |
-| Сотрудник (e1..e6)  | e1@smp.local       | employee123  |
+| Замполит (Зорин)    | zorin@smp.team    | zorin12345   |
+| Админ               | admin@smp.team    | admin12345   |
+| Менеджер участка    | manager@smp.team  | manager12345 |
+| Сотрудник (e1..e6)  | e1@smp.team       | employee123  |
 
 ## Прод
 - Postgres 15+ managed (RDS/Yandex Managed/etc.).

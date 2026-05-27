@@ -30,6 +30,10 @@ class TestResponse(Base):
 
     answers: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     answers_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # ФИО, которое ввёл сам респондент. Хранится отдельно от user_id,
+    # потому что один и тот же сотрудник может проходить тест по
+    # shared-ссылке без авторизации.
+    respondent_name: Mapped[str | None] = mapped_column(String(255))
 
     # Тайминги — для оценки валидности («думал» vs «тыкал»).
     total_time_ms: Mapped[int | None] = mapped_column(Integer)

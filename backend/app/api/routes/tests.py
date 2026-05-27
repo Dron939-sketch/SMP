@@ -5,12 +5,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_optional_user, require_roles
 from app.config import get_settings
 from app.database import get_db
 from app.models.analysis import AnalysisResult
@@ -30,13 +31,31 @@ from app.services.ai_service import AIService
 from app.services.alert_service import dispatch_alerts, evaluate
 from app.services.timing_service import analyze as analyze_timing
 
+logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/tests", tags=["tests"])
+
+
+@router.post("/_reseed")
+async def reseed_tests(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_optional_user)],
+):
+    """Принудительный пересид. Безопасно дёргать сколько угодно —
+    операции идемпотентные. Удобно для прода: нажал → проверил."""
+    from app.seed import _seed_tests, _seed_users
+
+    await _seed_users(db)
+    await _seed_tests(db)
+    await db.commit()
+    stmt = select(Test).where(Test.is_active.is_(True))
+    rows = (await db.execute(stmt)).scalars().all()
+    return {"tests_count": len(rows), "titles": [t.title for t in rows]}
 
 
 @router.get("", response_model=list[TestRead])
 async def list_tests(
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
     stmt = (
         select(Test)
@@ -44,14 +63,35 @@ async def list_tests(
         .options(selectinload(Test.questions))
         .order_by(Test.created_at.desc())
     )
-    return (await db.execute(stmt)).scalars().all()
+    rows = (await db.execute(stmt)).scalars().all()
+    # Самолечение: если шаблонов в YAML больше, чем активных тестов
+    # в БД — досеиваем недостающие. Срабатывает и при пустой БД, и
+    # после добавления новых шаблонов без редеплоя.
+    try:
+        from app.seed import _expected_test_titles, _seed_tests
+
+        expected = _expected_test_titles()
+        if expected and len(rows) < len(expected):
+            logger.info(
+                "tests.autoseed.start",
+                in_db=len(rows),
+                expected=len(expected),
+            )
+            await _seed_tests(db)
+            await db.commit()
+            rows = (await db.execute(stmt)).scalars().all()
+            logger.info("tests.autoseed.done", in_db_after=len(rows))
+    except Exception:
+        logger.exception("tests.autoseed.failed")
+        await db.rollback()
+    return rows
 
 
 @router.get("/{test_id}", response_model=TestRead)
 async def get_test(
     test_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
     test = (
         await db.execute(
@@ -115,6 +155,7 @@ async def create_share_link(
         await db.execute(select(Test).where(Test.id == test_id))
     ).scalar_one_or_none()
     if not test:
+        logger.warning("share.test_not_found", test_id=str(test_id))
         raise HTTPException(status.HTTP_404_NOT_FOUND, "test not found")
 
     token = secrets.token_urlsafe(24)
@@ -128,8 +169,26 @@ async def create_share_link(
         + timedelta(days=payload.expires_in_days),
     )
     db.add(link)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as err:
+        logger.exception(
+            "share.create_failed",
+            test_id=str(test_id),
+            cycle_tag=payload.cycle_tag,
+        )
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Не удалось создать ссылку. Попробуйте ещё раз.",
+        ) from err
     await db.refresh(link)
+    logger.info(
+        "share.created",
+        test_id=str(test_id),
+        token_prefix=token[:8],
+        cycle_tag=payload.cycle_tag,
+    )
 
     settings = get_settings()
     origin = (
@@ -144,7 +203,7 @@ async def create_share_link(
         expires_at=link.expires_at,
         uses=link.uses,
         note=link.note,
-        share_url=f"{origin}/t/{token}",
+        share_url=f"{origin}/#/t/{token}",
     )
 
 
@@ -182,7 +241,7 @@ async def list_share_links(
             expires_at=r.expires_at,
             uses=r.uses,
             note=r.note,
-            share_url=f"{origin}/t/{r.token}",
+            share_url=f"{origin}/#/t/{r.token}",
         )
         for r in rows
     ]
@@ -198,67 +257,105 @@ async def _submit(
     user: User,
     payload: TestSubmitRequest,
 ) -> TestSubmitResponse:
-    answers_payload = [a.model_dump(mode="json") for a in payload.answers]
-    answers_hash = hashlib.sha256(
-        json.dumps(answers_payload, sort_keys=True).encode()
-    ).hexdigest()
-
-    question_types: dict[str, str] = {
-        str(q.id): q.question_type.value for q in test.questions
-    } if test.questions else {}
-
-    timing = analyze_timing(
-        answers_payload,
-        question_types=question_types,
+    log = logger.bind(
+        test_id=str(test.id),
+        test_title=test.title,
+        cycle_tag=payload.cycle_tag,
+        respondent_name=(payload.respondent_name or "")[:40],
+        answers_count=len(payload.answers),
         total_time_ms=payload.total_time_ms,
     )
+    log.info("submit.start")
+    try:
+        answers_payload = [a.model_dump(mode="json") for a in payload.answers]
+        answers_hash = hashlib.sha256(
+            json.dumps(answers_payload, sort_keys=True).encode()
+        ).hexdigest()
 
-    response = TestResponse(
-        test_id=test.id,
-        user_id=user.id,
-        cycle_tag=payload.cycle_tag,
-        answers=answers_payload,
-        answers_hash=answers_hash,
-        total_time_ms=payload.total_time_ms,
-        median_time_per_question_ms=timing["median_time_per_question_ms"],
-        rushed_share=timing["rushed_share"],
-        validity_flag=timing["validity_flag"],
-        client_started_at=payload.client_started_at,
-        client_finished_at=payload.client_finished_at,
-    )
-    db.add(response)
-    await db.flush()
+        question_types: dict[str, str] = (
+            {str(q.id): q.question_type.value for q in test.questions}
+            if test.questions
+            else {}
+        )
 
-    ai = AIService()
-    ai_request = AIAnalyzeRequest(
-        employee_id=str(user.id),
-        role=user.role.value,
-        department=user.department,
-        site=user.site,
-        cycle_tag=payload.cycle_tag,
-        answers=[AIAnswerItem(**a) for a in answers_payload],
-    )
-    result = await ai.analyze(ai_request)
+        timing = analyze_timing(
+            answers_payload,
+            question_types=question_types,
+            total_time_ms=payload.total_time_ms,
+        )
 
-    analysis = AnalysisResult(
-        response_id=response.id,
-        prompt_version=result.prompt_version,
-        ai_model=result.ai_model,
-        score_metrics=result.score_metrics.model_dump(),
-        risk_flags=result.risk_flags,
-        recommendations=result.recommendations,
-        summary_text=result.summary_text,
-        employer_image=result.employer_image.model_dump(),
-        anchor_engine=result.anchor_engine,
-        anchor_engine_confidence=result.anchor_engine_confidence,
-        anchor_engine_reasoning=result.anchor_engine_reasoning,
-        raw_llm_response=result.model_dump(mode="json"),
-    )
-    db.add(analysis)
-    await db.commit()
+        response = TestResponse(
+            test_id=test.id,
+            user_id=user.id,
+            cycle_tag=payload.cycle_tag,
+            answers=answers_payload,
+            answers_hash=answers_hash,
+            respondent_name=payload.respondent_name.strip(),
+            total_time_ms=payload.total_time_ms,
+            median_time_per_question_ms=timing["median_time_per_question_ms"],
+            rushed_share=timing["rushed_share"],
+            validity_flag=timing["validity_flag"],
+            client_started_at=payload.client_started_at,
+            client_finished_at=payload.client_finished_at,
+        )
+        db.add(response)
+        await db.flush()
+        log.info("submit.response_saved", response_id=str(response.id))
 
-    await dispatch_alerts(evaluate(result))
-    return TestSubmitResponse(response_id=response.id, analysis_id=analysis.id)
+        ai = AIService()
+        ai_request = AIAnalyzeRequest(
+            employee_id=str(user.id),
+            role=user.role.value,
+            department=user.department,
+            site=user.site,
+            cycle_tag=payload.cycle_tag,
+            answers=[AIAnswerItem(**a) for a in answers_payload],
+        )
+        try:
+            result = await ai.analyze(ai_request)
+        except Exception:
+            log.exception("submit.ai_analyze_failed")
+            raise
+
+        analysis = AnalysisResult(
+            response_id=response.id,
+            prompt_version=result.prompt_version,
+            ai_model=result.ai_model,
+            score_metrics=result.score_metrics.model_dump(),
+            risk_flags=result.risk_flags,
+            recommendations=result.recommendations,
+            summary_text=result.summary_text,
+            employer_image=result.employer_image.model_dump(),
+            anchor_engine=result.anchor_engine,
+            anchor_engine_confidence=result.anchor_engine_confidence,
+            anchor_engine_reasoning=result.anchor_engine_reasoning,
+            raw_llm_response=result.model_dump(mode="json"),
+        )
+        db.add(analysis)
+        await db.commit()
+        log.info(
+            "submit.done",
+            response_id=str(response.id),
+            analysis_id=str(analysis.id),
+            anchor_engine=result.anchor_engine,
+            risk_flags=result.risk_flags,
+        )
+
+        try:
+            await dispatch_alerts(evaluate(result))
+        except Exception:
+            log.warning("submit.alerts_failed", exc_info=True)
+
+        return TestSubmitResponse(response_id=response.id, analysis_id=analysis.id)
+    except HTTPException:
+        raise
+    except Exception as err:
+        log.exception("submit.failed")
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Не удалось сохранить ответы. Попробуйте отправить ещё раз.",
+        ) from err
 
 
 @router.post("/{test_id}/submit", response_model=TestSubmitResponse)
@@ -266,7 +363,7 @@ async def submit_test(
     test_id: uuid.UUID,
     payload: TestSubmitRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
     if not user.consent_given:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "consent required")
@@ -287,10 +384,10 @@ async def submit_shared(
     token: str,
     payload: TestSubmitRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_optional_user)],
 ):
-    """Сабмит по shared-ссылке. Пользователь всё равно должен быть авторизован
-    (иначе нечем «привязать» ответы к траектории), но передаёт `token`, что
+    """Сабмит по shared-ссылке. Логин не требуется (в демо-режиме
+    бэк подставит синтетического юзера), передаётся token что
     инкрементит счётчик использований ссылки."""
     link = (
         await db.execute(select(TestShareLink).where(TestShareLink.token == token))

@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { tests } from "../api/client";
+import { settings as settingsApi, tests } from "../api/client";
+import {
+  ConsentModal,
+  hasLocalConsent,
+} from "../components/ConsentModal";
 import { TestForm } from "../components/TestForm";
 import type { Test } from "../types";
 
@@ -24,16 +28,26 @@ export default function TestRunner() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const [test, setTest] = useState<Test | null>(null);
+  // null — ещё не загружено; bool — пришедшее значение тумблера с бэка.
+  const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
+  const [consentAccepted, setConsentAccepted] = useState<boolean>(
+    hasLocalConsent()
+  );
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     tests.get(id).then(setTest).catch((e) => setErr(e.message));
+    settingsApi
+      .get()
+      .then((s) => setConsentRequired(s.consent_collection_enabled))
+      .catch(() => setConsentRequired(true));
   }, [id]);
 
   if (err) return <div className="card text-smp-crit">Ошибка: {err}</div>;
-  if (!test) return <div className="text-slate-400">Загружаю тест…</div>;
+  if (!test || consentRequired === null)
+    return <div className="text-slate-400">Загружаю тест…</div>;
 
   if (done) {
     return (
@@ -49,6 +63,8 @@ export default function TestRunner() {
       </div>
     );
   }
+
+  const needConsent = consentRequired && !consentAccepted;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -69,6 +85,12 @@ export default function TestRunner() {
           setDone(true);
         }}
       />
+      {needConsent && (
+        <ConsentModal
+          onCancel={() => nav("/")}
+          onAccept={() => setConsentAccepted(true)}
+        />
+      )}
     </div>
   );
 }

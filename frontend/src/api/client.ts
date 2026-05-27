@@ -1,14 +1,19 @@
 import type {
+  AppSettings,
   AssistantAskResponse,
   AssistantGreeting,
   AssistantMessage,
   DashboardPayload,
+  ResponseDetail,
+  ResponseListItem,
   ShareLink,
   Test,
   User,
 } from "../types";
 
-const BASE = ""; // vite proxy handles /api/*
+// dev: Vite-прокси перенаправляет /api/* на backend (см. vite.config.ts);
+// prod: подставляется VITE_API_URL (например https://buildpulse-backend.onrender.com).
+const BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 let _token: string | null = localStorage.getItem("bp_token");
 let _refresh: string | null = localStorage.getItem("bp_refresh");
@@ -84,8 +89,47 @@ export const dashboard = {
     ),
   refreshAdvisor: () =>
     request<unknown>(`/api/dashboard/advisor/refresh`, { method: "POST" }),
-  exportXlsx: (cycle_tag?: string) =>
-    `/api/dashboard/export/xlsx${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`,
+};
+
+export const reports = {
+  list: (params: { test_id?: string; cycle_tag?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.test_id) q.set("test_id", params.test_id);
+    if (params.cycle_tag) q.set("cycle_tag", params.cycle_tag);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return request<{ total: number; items: ResponseListItem[] }>(
+      `/api/reports/responses${qs}`
+    );
+  },
+  get: (id: string) =>
+    request<ResponseDetail>(`/api/reports/responses/${id}`),
+};
+
+export const settings = {
+  get: () => request<AppSettings>("/api/admin/settings"),
+  update: (
+    key: keyof AppSettings,
+    value: AppSettings[keyof AppSettings],
+    adminToken: string
+  ) =>
+    request<AppSettings>(`/api/admin/settings/${key}`, {
+      method: "PUT",
+      headers: { "X-Admin-Token": adminToken },
+      body: JSON.stringify({ value }),
+    }),
+};
+
+export const admin = {
+  wipeResponses: (adminToken: string) =>
+    request<{ deleted_responses: number; deleted_analyses: number }>(
+      "/api/admin/wipe-responses",
+      { method: "POST", headers: { "X-Admin-Token": adminToken } }
+    ),
+  wipeShareLinks: (adminToken: string) =>
+    request<{ deleted_share_links: number }>(
+      "/api/admin/wipe-share-links",
+      { method: "POST", headers: { "X-Admin-Token": adminToken } }
+    ),
 };
 
 export const assistant = {
