@@ -133,7 +133,7 @@ function DetailModal({
       onClick={onClose}
     >
       <div
-        className="card card-accent max-w-3xl w-full max-h-[90vh] overflow-y-scroll overscroll-contain pr-3"
+        className="card card-accent max-w-3xl w-full max-h-[90vh] overflow-y-scroll overscroll-contain pr-3 scroll-fade-bottom"
         style={{ scrollbarGutter: "stable" }}
         onClick={(e) => e.stopPropagation()}
       >
