@@ -133,10 +133,13 @@ function DetailModal({
       onClick={onClose}
     >
       <div
-        className="card card-accent max-w-3xl w-full max-h-[90vh] overflow-y-scroll overscroll-contain pr-3"
-        style={{ scrollbarGutter: "stable" }}
+        className="card-accent rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
+        <div
+          className="card overflow-y-auto overscroll-contain flex-1 scroll-fade-bottom"
+          style={{ scrollbarGutter: "stable" }}
+        >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="label">Отчёт по тесту</div>
@@ -242,6 +245,7 @@ function DetailModal({
             ))}
           </ul>
         </section>
+        </div>
       </div>
     </div>
   );
