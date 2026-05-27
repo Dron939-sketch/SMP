@@ -133,7 +133,8 @@ function DetailModal({
       onClick={onClose}
     >
       <div
-        className="card card-accent max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+        className="card card-accent max-w-3xl w-full max-h-[90vh] overflow-y-scroll overscroll-contain pr-3"
+        style={{ scrollbarGutter: "stable" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">

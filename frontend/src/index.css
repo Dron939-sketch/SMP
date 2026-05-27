@@ -93,9 +93,12 @@ button, a, input, select, textarea {
   color: transparent;
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.28); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(125, 211, 252, 0.55); background-clip: padding-box; border: 2px solid transparent; }
+/* Firefox */
+* { scrollbar-color: rgba(255,255,255,0.28) rgba(255,255,255,0.04); scrollbar-width: thin; }
 
 @media (max-width: 640px) {
   .hide-mobile { display: none; }

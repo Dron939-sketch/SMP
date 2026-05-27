@@ -78,10 +78,13 @@ export function TestForm({ test, cycleTag, onSubmit }: Props) {
     if (!activeQ) return;
     setAnswers((a) => {
       const had = activeQ.id in a;
-      if (had) {
+      // Для open_text каждый keystroke шлёт onChange — считать это
+      // «ревизией» бессмысленно (на длинных текстах счётчик улетает
+      // за тысячу). Засчитываем revision только для дискретных типов.
+      // Дополнительно клампим до 10_000 в согласии с бэком (le=10_000).
+      if (had && activeQ.question_type !== "open_text") {
         setRevisions((r) => ({
           ...r,
-          // потолок согласован с бэком (le=10_000), чтобы сабмит не падал на 422
           [activeQ.id]: Math.min((r[activeQ.id] || 0) + 1, 10_000),
         }));
       }

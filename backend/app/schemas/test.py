@@ -51,8 +51,17 @@ class AnswerSubmit(BaseModel):
     # чтобы случайный/злонамеренный ввод не положил БД.
     value: int | float | str | list[str] | None = Field(default=None)
     # Открытый текст. До 10 000 символов хватит на самый
-    # развёрнутый ответ; если кто-то вставит больше — обрезаем.
-    text: str | None = Field(default=None, max_length=10_000)
+    # развёрнутый ответ; если кто-то вставит больше — обрезаем
+    # МЯГКО, не возвращая 422. Иначе тест с длинным сочинением
+    # упадёт без понятной диагностики на стороне сотрудника.
+    text: str | None = Field(default=None)
+
+    @field_validator("text")
+    @classmethod
+    def _cap_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return v[:10_000]
 
     @field_validator("value")
     @classmethod
