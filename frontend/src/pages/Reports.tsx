@@ -137,7 +137,7 @@ function DetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="card overflow-y-auto overscroll-contain flex-1 scroll-fade-bottom"
+          className="card overflow-y-auto overscroll-contain flex-1 min-h-0 scroll-fade-bottom"
           style={{ scrollbarGutter: "stable" }}
         >
         <div className="flex items-start justify-between gap-3">
