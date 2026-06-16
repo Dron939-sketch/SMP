@@ -29,6 +29,7 @@ const PORTRAITS_AUTH_KEY = "smp_portraits_unlocked";
 // === Локализация ===
 
 const METRIC_LABEL: Record<string, string> = {
+  // Основные 10 шкал замполита
   stress_index: "Стресс",
   burnout_risk: "Риск выгорания",
   work_life_balance: "Баланс работа/жизнь",
@@ -39,9 +40,32 @@ const METRIC_LABEL: Record<string, string> = {
   team_cohesion: "Сплочённость команды",
   loyalty_intent: "Лояльность",
   psychological_safety: "Психобезопасность",
+  // Кадровый резерв / Big Five
+  conscientiousness: "Добросовестность",
+  openness: "Открытость к новому",
+  extraversion: "Экстраверсия",
+  agreeableness: "Согласие",
+  neuroticism: "Тревожность",
+  emotional_stability: "Эмоциональная устойчивость",
+  learning_agility: "Обучаемость",
+  // Прочее
   engagement: "Вовлечённость",
   meaning: "Осмысленность",
   autonomy: "Самостоятельность",
+  proactivity: "Проактивность",
+  initiative: "Инициативность",
+  resilience: "Резильентность",
+  optimism: "Оптимизм",
+  self_efficacy: "Уверенность в себе",
+  hope: "Надежда на будущее",
+  org_politics: "Внутренняя политика",
+  lmx: "Связь с руководителем",
+  perceived_org_support: "Чувство поддержки",
+  collaboration: "Сотрудничество",
+  communication: "Коммуникация",
+  initiative_taking: "Инициатива",
+  decision_making: "Решительность",
+  problem_solving: "Решение проблем",
 };
 
 // Метрики где низкое значение = хорошо
@@ -293,7 +317,15 @@ function EmployeesTab() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      <div className={selected ? "lg:col-span-4" : "lg:col-span-12"}>
+      {/* Список: на мобильном скрывается когда выбран сотрудник,
+          на десктопе (lg+) всегда виден сбоку */}
+      <div
+        className={
+          selected
+            ? "hidden lg:block lg:col-span-4"
+            : "lg:col-span-12"
+        }
+      >
         <div className="flex items-center gap-3 mb-3">
           <input
             value={search}
@@ -309,7 +341,13 @@ function EmployeesTab() {
           {filtered.map((it) => (
             <li key={it.user_id}>
               <button
-                onClick={() => setSelected(it.user_id)}
+                onClick={() => {
+                  setSelected(it.user_id);
+                  // На мобильном — после клика прокрутить наверх
+                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
                 className={`w-full text-left card hover:border-smp-accent/40 transition cursor-pointer ${
                   selected === it.user_id ? "border-smp-accent/60" : ""
                 }`}
@@ -449,6 +487,14 @@ function EmployeePortrait({
 
   return (
     <div className="space-y-4 sticky top-4">
+      {/* Кнопка «К списку» — только на мобильном (на десктопе список рядом) */}
+      <button
+        onClick={onClose}
+        className="lg:hidden btn-ghost text-sm w-full text-left flex items-center gap-2"
+      >
+        ← К списку сотрудников
+      </button>
+
       {/* 1. ID card */}
       <div className="card">
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -464,7 +510,11 @@ function EmployeePortrait({
               Тестов пройдено: <span className="text-slate-300">{d.tests_passed}</span>
             </div>
           </div>
-          <button onClick={onClose} className="btn-ghost text-xs" title="Закрыть">
+          <button
+            onClick={onClose}
+            className="btn-ghost text-xs hidden lg:inline-flex"
+            title="Закрыть"
+          >
             ✕
           </button>
         </div>

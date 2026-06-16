@@ -48,28 +48,27 @@ export function AboutSystem() {
 function BriefModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
-      <div
-        className="card card-accent max-w-2xl w-full my-auto flex flex-col"
-        style={{ maxHeight: "calc(100dvh - 2rem)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 mb-3 flex-shrink-0">
-          <div>
-            <div className="label">О системе</div>
-            <h2 className="text-xl font-semibold mt-1">
-              Как это работает — короткая механика
-            </h2>
+      <div className="min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4">
+        <div
+          className="card card-accent max-w-2xl w-full my-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-3 mb-3 sticky top-0 bg-smp-panel/95 backdrop-blur z-10 -mx-5 px-5 pt-5 pb-2">
+            <div>
+              <div className="label">О системе</div>
+              <h2 className="text-xl font-semibold mt-1">
+                Как это работает — короткая механика
+              </h2>
+            </div>
+            <button className="btn-ghost text-xs" onClick={onClose}>
+              ✕
+            </button>
           </div>
-          <button className="btn-ghost text-xs" onClick={onClose}>
-            ✕
-          </button>
-        </div>
 
-        <div className="overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
-        <div className="space-y-3 mb-4">
+          <div className="space-y-3 mb-4">
           {(Object.keys(SECTIONS) as Key[]).map((k) => (
             <div
               key={k}
@@ -164,16 +163,16 @@ function BriefModal({ onClose }: { onClose: () => void }) {
           прохождения. Никаких метрик, никаких меток.
         </Block>
 
-        <div className="pt-3 border-t border-white/5 text-xs text-slate-500 text-center leading-relaxed">
-          Разработано{" "}
-          <span className="text-slate-300">Андреем Мейстером</span>{" "}
-          специально для{" "}
-          <span className="text-slate-300">СпецМонтажПроект</span>.
+          <div className="pt-3 border-t border-white/5 text-xs text-slate-500 text-center leading-relaxed">
+            Разработано{" "}
+            <span className="text-slate-300">Андреем Мейстером</span>{" "}
+            специально для{" "}
+            <span className="text-slate-300">СпецМонтажПроект</span>.
+          </div>
+          <button className="btn-primary w-full mt-3" onClick={onClose}>
+            Понятно
+          </button>
         </div>
-        </div>
-        <button className="btn-primary w-full mt-3 flex-shrink-0" onClick={onClose}>
-          Понятно
-        </button>
       </div>
     </div>
   );
@@ -182,26 +181,25 @@ function BriefModal({ onClose }: { onClose: () => void }) {
 function ManualModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
-      <div
-        className="card card-accent max-w-2xl w-full my-auto flex flex-col"
-        style={{ maxHeight: "calc(100dvh - 2rem)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
-          <div>
-            <div className="label">Инструкция</div>
-            <h2 className="text-xl font-semibold mt-1">Как пользоваться системой</h2>
+      <div className="min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4">
+        <div
+          className="card card-accent max-w-2xl w-full my-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-3 mb-4 sticky top-0 bg-smp-panel/95 backdrop-blur z-10 -mx-5 px-5 pt-5 pb-2">
+            <div>
+              <div className="label">Инструкция</div>
+              <h2 className="text-xl font-semibold mt-1">Как пользоваться системой</h2>
+            </div>
+            <button className="btn-ghost text-xs" onClick={onClose}>
+              ✕
+            </button>
           </div>
-          <button className="btn-ghost text-xs" onClick={onClose}>
-            ✕
-          </button>
-        </div>
 
-        <div className="overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
-        <Block title="Что это вообще">
+          <Block title="Что это вообще">
           Система помогает замполиту видеть, что{" "}
           <em>на самом деле</em> происходит с людьми, а не то, что они
           говорят на совещании. Вы раздаёте сотрудникам тесты с
@@ -281,10 +279,10 @@ function ManualModal({ onClose }: { onClose: () => void }) {
           цикле — выводам не доверять. Цель: 30+ респондентов.
         </Block>
 
+          <button className="btn-primary w-full mt-4" onClick={onClose}>
+            Понятно
+          </button>
         </div>
-        <button className="btn-primary w-full mt-4 flex-shrink-0" onClick={onClose}>
-          Понятно
-        </button>
       </div>
     </div>
   );
