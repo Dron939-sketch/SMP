@@ -1,0 +1,46 @@
+name: Sync to GitVerse and deploy to Amvera
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitVerse (mirror main)
+        env:
+          GV_USER: ${{ secrets.GITVERSE_USER }}
+          GV_PASS: ${{ secrets.GITVERSE_PASSWORD }}
+          GV_PATH: ${{ secrets.GITVERSE_PATH }}
+        run: |
+          if [ -z "$GV_PATH" ]; then
+            echo "GITVERSE_PATH not set — skipping GitVerse push"
+            exit 0
+          fi
+          git push "https://${GV_USER}:${GV_PASS}@gitverse.ru/${GV_PATH}.git" \
+            "refs/heads/main:refs/heads/main" --force
+
+      - name: Deploy to Amvera (push main to master)
+        env:
+          AM_USER: ${{ secrets.AMVERA_USER }}
+          AM_PASS: ${{ secrets.AMVERA_PASSWORD }}
+          AM_PATH: ${{ secrets.AMVERA_PATH }}
+        run: |
+          if [ -z "$AM_PATH" ]; then
+            echo "AMVERA_PATH not set — skipping Amvera deploy"
+            exit 0
+          fi
+          git push "https://${AM_USER}:${AM_PASS}@git.msk0.amvera.ru/${AM_PATH}" \
+            "refs/heads/main:refs/heads/master" --force
