@@ -474,12 +474,14 @@ function EmployeePortrait({
 
   const timelineData = useMemo(() => {
     if (!timelineKeys.length) return [];
-    // build cycle → metrics map
-    const map: Record<string, Record<string, number>> = {};
+    // build cycle → metrics map (значения смешанные — cycle_tag строка, метрики числа)
+    const map: Record<string, Record<string, string | number>> = {};
     for (const k of timelineKeys) {
       for (const p of d.metric_timeline[k] || []) {
-        map[p.cycle_tag] ||= { cycle_tag: p.cycle_tag } as Record<string, number>;
-        (map[p.cycle_tag] as Record<string, unknown>)[k] = p.value;
+        if (!map[p.cycle_tag]) {
+          map[p.cycle_tag] = { cycle_tag: p.cycle_tag };
+        }
+        map[p.cycle_tag][k] = p.value;
       }
     }
     return Object.values(map);
@@ -587,9 +589,14 @@ function EmployeePortrait({
                     border: "1px solid #1f2937",
                     fontSize: 12,
                   }}
-                  formatter={(_v: unknown, _name: unknown, item: { payload: { actual: number } }) =>
-                    [item.payload.actual.toFixed(2), "значение"]
-                  }
+                  formatter={(value: unknown, _name: unknown, item: unknown) => {
+                    // Показываем реальное (не инвертированное) значение метрики
+                    const actual = (item as { payload?: { actual?: number } })?.payload?.actual;
+                    return [
+                      typeof actual === "number" ? actual.toFixed(2) : String(value),
+                      "значение",
+                    ];
+                  }}
                 />
               </RadarChart>
             </ResponsiveContainer>
