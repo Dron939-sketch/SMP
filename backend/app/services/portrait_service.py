@@ -9,17 +9,87 @@ TestResponse'ы привязаны к одному технологическо�
 
 from __future__ import annotations
 
+import hashlib
+import logging
 from collections import Counter
 from statistics import mean
-from typing import Any, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.analysis import AnalysisResult
+from app.models.portrait_cache import CachedPortrait
 from app.models.response import TestResponse
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+
+def _input_hash(items: List[tuple[str, str]]) -> str:
+    """Хеш входных данных для инвалидации кеша.
+
+    items — sorted список (analysis_id, submitted_at_isoformat).
+    Если что-то поменялось — хеш не сойдётся, кеш пересоберём.
+    """
+    payload = "|".join(f"{a}:{b}" for a, b in items)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+async def _get_or_build_cache(
+    db: AsyncSession,
+    *,
+    portrait_type: str,
+    subject_key: str,
+    cycle_tag: str | None,
+    current_hash: str,
+    build_fn: Callable[[], Awaitable[Dict[str, Any]]],
+) -> Dict[str, Any]:
+    """Универсальная обёртка cache-aside.
+
+    1. Ищем CachedPortrait по (type, subject, cycle).
+    2. Если есть и input_hash совпадает — возвращаем aggregated_data.
+    3. Иначе строим через build_fn(), сохраняем, возвращаем.
+    """
+    q = select(CachedPortrait).where(
+        CachedPortrait.portrait_type == portrait_type,
+        CachedPortrait.subject_key == subject_key,
+    )
+    if cycle_tag is None:
+        q = q.where(CachedPortrait.cycle_tag.is_(None))
+    else:
+        q = q.where(CachedPortrait.cycle_tag == cycle_tag)
+    existing = (await db.execute(q)).scalar_one_or_none()
+
+    if existing and existing.input_hash == current_hash:
+        return dict(existing.aggregated_data)
+
+    data = await build_fn()
+    if existing:
+        existing.input_hash = current_hash
+        existing.aggregated_data = data
+        # synthesized_text не трогаем — пусть пересоздаётся отдельно,
+        # если пользователь жмёт «Сгенерировать литературный портрет».
+        # При смене input_hash литературный синтез автоматически считается
+        # устаревшим (фронт ориентируется на updated_at vs hash).
+    else:
+        db.add(
+            CachedPortrait(
+                portrait_type=portrait_type,
+                subject_key=subject_key,
+                cycle_tag=cycle_tag,
+                input_hash=current_hash,
+                aggregated_data=data,
+            )
+        )
+    try:
+        await db.flush()
+    except Exception as e:
+        # Если по какой-то причине не удалось закешировать — логируем и
+        # возвращаем данные. На UX это не должно влиять.
+        logger.warning("portrait cache save failed: %s", e)
+    return data
 
 
 def _respondent_key(r: TestResponse, users_by_id: Dict[str, User]) -> str:
@@ -39,12 +109,44 @@ def _respondent_key(r: TestResponse, users_by_id: Dict[str, User]) -> str:
 async def list_employee_portraits(
     db: AsyncSession, *, cycle_tag: str | None = None
 ) -> List[Dict[str, Any]]:
-    """Возвращает список респондентов со сводкой их портретов.
+    """Список респондентов со сводкой портретов.
 
-    Группировка по `respondent_name` (PII введён сотрудником).
-    Если у нескольких сабмитов одинаковое имя — это один и тот же
-    человек, и его портрет суммируется по всем циклам.
+    Кешируется в таблице cached_portraits (type='employee_list',
+    subject='__all__', cycle=cycle_tag). При смене входных AnalysisResult
+    хеш не сходится, пересоздаём.
     """
+    # Сначала собираем минимальный набор для input_hash (без полного scan)
+    hash_q = (
+        select(AnalysisResult.id, TestResponse.submitted_at)
+        .join(TestResponse, TestResponse.id == AnalysisResult.response_id)
+    )
+    if cycle_tag:
+        hash_q = hash_q.where(TestResponse.cycle_tag == cycle_tag)
+    hash_rows = (await db.execute(hash_q)).all()
+    items = sorted(
+        (str(r[0]), r[1].isoformat() if r[1] else "") for r in hash_rows
+    )
+    current_hash = _input_hash(items)
+
+    async def _build() -> Dict[str, Any]:
+        out = await _build_employee_list(db, cycle_tag=cycle_tag)
+        return {"items": out}
+
+    result = await _get_or_build_cache(
+        db,
+        portrait_type="employee_list",
+        subject_key="__all__",
+        cycle_tag=cycle_tag,
+        current_hash=current_hash,
+        build_fn=_build,
+    )
+    return list(result.get("items", []))
+
+
+async def _build_employee_list(
+    db: AsyncSession, *, cycle_tag: str | None
+) -> List[Dict[str, Any]]:
+    """Реальная агрегация (бывшее тело list_employee_portraits)."""
     q = (
         select(TestResponse)
         .join(AnalysisResult, AnalysisResult.response_id == TestResponse.id)
@@ -125,10 +227,43 @@ async def list_employee_portraits(
 async def get_employee_portrait(
     db: AsyncSession, *, user_id: str
 ) -> Dict[str, Any] | None:
-    """Детальный портрет одного респондента.
+    """Детальный портрет одного респондента (с кешем).
 
-    `user_id` тут — это `respondent_name` (см. list_employee_portraits).
+    `user_id` тут — это `respondent_name`.
     """
+    # Хеш-запрос — только id и submitted_at, минимум данных
+    hash_q = (
+        select(AnalysisResult.id, TestResponse.submitted_at)
+        .join(TestResponse, TestResponse.id == AnalysisResult.response_id)
+        .where(TestResponse.respondent_name == user_id)
+    )
+    hash_rows = (await db.execute(hash_q)).all()
+    if not hash_rows:
+        return None
+    items = sorted(
+        (str(r[0]), r[1].isoformat() if r[1] else "") for r in hash_rows
+    )
+    current_hash = _input_hash(items)
+
+    async def _build() -> Dict[str, Any]:
+        out = await _build_employee_detail(db, user_id=user_id)
+        return out or {}
+
+    cached = await _get_or_build_cache(
+        db,
+        portrait_type="employee_detail",
+        subject_key=user_id,
+        cycle_tag=None,
+        current_hash=current_hash,
+        build_fn=_build,
+    )
+    return cached if cached else None
+
+
+async def _build_employee_detail(
+    db: AsyncSession, *, user_id: str
+) -> Dict[str, Any] | None:
+    """Реальная сборка детального портрета (бывшее тело get_employee_portrait)."""
     q = (
         select(TestResponse)
         .where(TestResponse.respondent_name == user_id)
@@ -208,7 +343,38 @@ async def get_employee_portrait(
 async def get_company_portrait(
     db: AsyncSession, *, cycle_tag: str | None = None, top_k_keywords: int = 50
 ) -> Dict[str, Any]:
-    """Расширенный портрет компании в глазах сотрудников."""
+    """Расширенный портрет компании в глазах сотрудников (с кешем)."""
+    hash_q = (
+        select(AnalysisResult.id, TestResponse.submitted_at)
+        .join(TestResponse, TestResponse.id == AnalysisResult.response_id)
+    )
+    if cycle_tag:
+        hash_q = hash_q.where(TestResponse.cycle_tag == cycle_tag)
+    hash_rows = (await db.execute(hash_q)).all()
+    items = sorted(
+        (str(r[0]), r[1].isoformat() if r[1] else "") for r in hash_rows
+    )
+    current_hash = _input_hash(items + [f"top_k:{top_k_keywords}"])
+
+    async def _build() -> Dict[str, Any]:
+        return await _build_company_portrait(
+            db, cycle_tag=cycle_tag, top_k_keywords=top_k_keywords
+        )
+
+    return await _get_or_build_cache(
+        db,
+        portrait_type="company",
+        subject_key="__all__",
+        cycle_tag=cycle_tag,
+        current_hash=current_hash,
+        build_fn=_build,
+    )
+
+
+async def _build_company_portrait(
+    db: AsyncSession, *, cycle_tag: str | None, top_k_keywords: int
+) -> Dict[str, Any]:
+    """Реальная сборка (бывшее тело get_company_portrait)."""
     q = select(TestResponse).options(selectinload(TestResponse.analysis))
     if cycle_tag:
         q = q.where(TestResponse.cycle_tag == cycle_tag)
