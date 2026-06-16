@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { auth, clearTokens } from "./api/client";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import Portraits from "./pages/Portraits";
 import SharedTest from "./pages/SharedTest";
 import TestList from "./pages/TestList";
 import TestRunner from "./pages/TestRunner";
@@ -90,6 +91,18 @@ export default function App() {
           user ? (
             <Layout user={user}>
               <TestList user={user} />
+            </Layout>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/portraits"
+        element={
+          user ? (
+            <Layout user={user}>
+              <Portraits user={user} />
             </Layout>
           ) : (
             <Navigate to="/login" replace />

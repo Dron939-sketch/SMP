@@ -72,6 +72,9 @@ export default function Dashboard({ user }: { user: User }) {
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Link to="/portraits" className="btn-ghost text-sm">
+              🧠 Портреты
+            </Link>
             <Link to="/tests" className="btn-ghost text-sm">
               Тесты и ссылки
             </Link>
