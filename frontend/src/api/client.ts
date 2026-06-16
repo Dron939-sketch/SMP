@@ -9,6 +9,9 @@ import type {
   ShareLink,
   Test,
   User,
+  PortraitCompany,
+  PortraitEmployeeDetail,
+  PortraitEmployeesResponse,
 } from "../types";
 
 // dev: Vite-прокси перенаправляет /api/* на backend (см. vite.config.ts);
@@ -170,4 +173,17 @@ export const assistant = {
     const data = await r.json();
     return data.transcript || null;
   },
+};
+
+export const portraits = {
+  employees: (cycle_tag?: string) =>
+    request<PortraitEmployeesResponse>(
+      `/api/portraits/employees${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`
+    ),
+  employee: (user_id: string) =>
+    request<PortraitEmployeeDetail>(`/api/portraits/employee/${user_id}`),
+  company: (cycle_tag?: string) =>
+    request<PortraitCompany>(
+      `/api/portraits/company${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`
+    ),
 };

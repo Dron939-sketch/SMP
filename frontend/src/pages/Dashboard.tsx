@@ -78,8 +78,8 @@ export default function Dashboard({ user }: { user: User }) {
               <Link to="/reports" className="btn-ghost text-sm">
                 Отчёты
               </Link>
-              <Link to="/usage" className="btn-ghost text-sm">
-                Статистика
+              <Link to="/portraits" className="btn-ghost text-sm">
+                🧠 Портреты
               </Link>
             </div>
           </div>

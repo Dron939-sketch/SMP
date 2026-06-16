@@ -246,3 +246,73 @@ export interface AssistantAskResponse {
   used_context: boolean;
   sources: { title: string; url: string; snippet: string }[];
 }
+// === Портреты ===
+
+export interface PortraitEmployeeSummary {
+  user_id: string;
+  full_name: string;
+  department: string | null;
+  site: string | null;
+  position: string | null;
+  tests_passed: number;
+  last_cycle_tag: string;
+  last_submitted_at: string | null;
+  avg_metrics: Record<string, number>;
+  anchor_engine: string | null;
+  anchor_engine_confidence: number | null;
+  risk_flags: string[];
+  latest_summary: string | null;
+}
+
+export interface PortraitEmployeesResponse {
+  count: number;
+  items: PortraitEmployeeSummary[];
+}
+
+export interface PortraitTimelinePoint {
+  cycle_tag: string;
+  value: number;
+  submitted_at: string | null;
+}
+
+export interface PortraitHistoryItem {
+  cycle_tag: string;
+  submitted_at: string | null;
+  validity_flag: string | null;
+  summary: string;
+  score_metrics: Record<string, number>;
+  risk_flags: string[];
+  recommendations: string[];
+  anchor_engine: string | null;
+  anchor_engine_confidence: number | null;
+  anchor_engine_reasoning: string | null;
+}
+
+export interface PortraitEmployeeDetail {
+  user: {
+    id: string;
+    full_name: string;
+    email: string;
+    role: string;
+    department: string | null;
+    site: string | null;
+    position: string | null;
+  };
+  tests_passed: number;
+  avg_metrics: Record<string, number>;
+  metric_timeline: Record<string, PortraitTimelinePoint[]>;
+  risk_freq: Record<string, number>;
+  top_recommendations: { text: string; count: number }[];
+  history: PortraitHistoryItem[];
+}
+
+export interface PortraitCompany {
+  respondents: number;
+  cycle_tag: string | null;
+  top_keywords: { keyword: string; weight: number; mentions: number }[];
+  sample_sentences: { text: string; cycle_tag: string }[];
+  flag_freq: Record<string, number>;
+  dark_signals: string[];
+  light_signals: string[];
+  by_department_top_keywords: Record<string, string[]>;
+}

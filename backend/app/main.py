@@ -14,6 +14,7 @@ from app.api.routes import (
     auth,
     dashboard,
     health,
+    portraits,
     prompts,
     reports,
     tests,
@@ -140,6 +141,7 @@ app.include_router(tests.router)
 app.include_router(ai.router)
 app.include_router(prompts.router)
 app.include_router(dashboard.router)
+app.include_router(portraits.router)
 app.include_router(assistant.router)
 app.include_router(admin.router)
 app.include_router(reports.router)
