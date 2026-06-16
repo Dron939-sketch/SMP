@@ -3,6 +3,9 @@ import type {
   AssistantGreeting,
   AssistantMessage,
   DashboardPayload,
+  PortraitCompany,
+  PortraitEmployeeDetail,
+  PortraitEmployeesResponse,
   ShareLink,
   Test,
   User,
@@ -126,4 +129,17 @@ export const assistant = {
     const data = await r.json();
     return data.transcript || null;
   },
+};
+
+export const portraits = {
+  employees: (cycle_tag?: string) =>
+    request<PortraitEmployeesResponse>(
+      `/api/portraits/employees${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`
+    ),
+  employee: (user_id: string) =>
+    request<PortraitEmployeeDetail>(`/api/portraits/employee/${user_id}`),
+  company: (cycle_tag?: string) =>
+    request<PortraitCompany>(
+      `/api/portraits/company${cycle_tag ? `?cycle_tag=${cycle_tag}` : ""}`
+    ),
 };
