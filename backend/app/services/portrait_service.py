@@ -374,7 +374,14 @@ async def get_company_portrait(
 async def _build_company_portrait(
     db: AsyncSession, *, cycle_tag: str | None, top_k_keywords: int
 ) -> Dict[str, Any]:
-    """Реальная сборка (бывшее тело get_company_portrait)."""
+    """Полный портрет компании в глазах сотрудников (9 секций).
+
+    Структура построена на фреймворках:
+    - Schein (artifacts/values/underlying assumptions)
+    - Gallup Q12 (engagement dimensions)
+    - eNPS proxy (% двигатели − % якоря)
+    - Denison Culture Model (involvement/consistency/adaptability/mission)
+    """
     q = select(TestResponse).options(selectinload(TestResponse.analysis))
     if cycle_tag:
         q = q.where(TestResponse.cycle_tag == cycle_tag)
@@ -385,6 +392,17 @@ async def _build_company_portrait(
     all_sentences: List[Dict[str, Any]] = []
     flag_freq: Counter[str] = Counter()
     by_dept_keywords: Dict[str, Counter] = {}
+
+    # Дополнительные счётчики для риск-карты и трендов
+    anchor_counter: Counter[str] = Counter()
+    metric_buckets: Dict[str, List[float]] = {}
+    by_dept_risks: Dict[str, Counter] = {}
+    by_dept_respondents: Counter[str] = Counter()
+    by_site_risks: Dict[str, Counter] = {}
+    by_site_respondents: Counter[str] = Counter()
+    by_cycle_metrics: Dict[str, Dict[str, List[float]]] = {}
+    by_cycle_anchors: Dict[str, Counter] = {}
+    all_recommendations: List[str] = []
 
     user_ids = list({str(r.user_id) for r in rows})
     users: List[User] = []
@@ -400,6 +418,9 @@ async def _build_company_portrait(
         if not an:
             continue
         total_responses += 1
+        u = users_by_id.get(str(r.user_id))
+
+        # Keywords + sentences (как раньше)
         emp = an.employer_image or {}
         for kw in (emp.get("top_keywords") or []):
             word = (kw.get("keyword") or "").strip().lower()
@@ -408,13 +429,36 @@ async def _build_company_portrait(
                 continue
             keyword_weights[word] = keyword_weights.get(word, 0) + weight
             keyword_mentions[word] = keyword_mentions.get(word, 0) + 1
-            u = users_by_id.get(str(r.user_id))
             if u and u.department:
                 by_dept_keywords.setdefault(u.department, Counter())[word] += 1
         for s in (emp.get("sample_sentences") or [])[:3]:
             all_sentences.append({"text": s, "cycle_tag": r.cycle_tag})
+
+        # Risk flags по компании, по отделу, по площадке
         for f in (an.risk_flags or []):
             flag_freq[f] += 1
+            if u and u.department:
+                by_dept_risks.setdefault(u.department, Counter())[f] += 1
+            if u and u.site:
+                by_site_risks.setdefault(u.site, Counter())[f] += 1
+
+        if u and u.department:
+            by_dept_respondents[u.department] += 1
+        if u and u.site:
+            by_site_respondents[u.site] += 1
+
+        # Метрики (avg по компании + по циклам)
+        for k, v in (an.score_metrics or {}).items():
+            metric_buckets.setdefault(k, []).append(float(v))
+            by_cycle_metrics.setdefault(r.cycle_tag, {}).setdefault(k, []).append(float(v))
+
+        # Anchor counter (для eNPS proxy + фазы)
+        if an.anchor_engine:
+            anchor_counter[an.anchor_engine] += 1
+            by_cycle_anchors.setdefault(r.cycle_tag, Counter())[an.anchor_engine] += 1
+
+        # Рекомендации
+        all_recommendations.extend(an.recommendations or [])
 
     top_keywords = sorted(
         (
@@ -442,9 +486,203 @@ async def _build_company_portrait(
         for dept, c in by_dept_keywords.items()
     }
 
+    # === Секция 1: ДИАГНОЗ ===
+    company_metrics_avg = {
+        k: round(mean(vs), 2) for k, vs in metric_buckets.items()
+    }
+    total_classified = sum(anchor_counter.values())
+    engines = anchor_counter.get("engine", 0)
+    anchors_open = anchor_counter.get("anchor", 0)
+    pretenders = anchor_counter.get("anchor_pretender", 0)
+    anchors_total = anchors_open + pretenders
+    engines_share = engines / total_classified if total_classified else 0
+    anchors_share = anchors_total / total_classified if total_classified else 0
+    enps_proxy = round((engines_share - anchors_share) * 100, 1)
+
+    positive_avg = (
+        company_metrics_avg.get("employer_brand", 0)
+        + company_metrics_avg.get("leadership_trust", 0)
+        + company_metrics_avg.get("loyalty_intent", 0)
+        + company_metrics_avg.get("team_cohesion", 0)
+    ) / 4 if company_metrics_avg else 0
+
+    if total_classified == 0:
+        phase, phase_label, phase_color = "unknown", "Недостаточно данных", "gray"
+        verdict = "Собирайте данные — пока выводов не сделать."
+    elif engines_share >= 0.45 and positive_avg >= 3.8 and anchors_share <= 0.15:
+        phase, phase_label, phase_color = "growth", "Развитие", "green"
+        verdict = (
+            f"Двигателей {round(engines_share * 100)}%, якорей "
+            f"{round(anchors_share * 100)}%. Компания растёт — двигатели "
+            f"задают темп, негатив на низком уровне."
+        )
+    elif anchors_share >= 0.35 or positive_avg < 3.0:
+        phase, phase_label, phase_color = "stagnation", "Стагнация", "red"
+        verdict = (
+            f"Якорей {round(anchors_share * 100)}%, позитивный фон "
+            f"{positive_avg:.1f}/5. Нужен план — без вмешательства "
+            f"тенденция продолжится."
+        )
+    else:
+        phase, phase_label, phase_color = "average", "Среднее", "yellow"
+        verdict = (
+            f"Без острых провалов, но и без рывков. Двигателей "
+            f"{round(engines_share * 100)}%, якорей "
+            f"{round(anchors_share * 100)}%."
+        )
+
+    diagnosis = {
+        "phase": phase,
+        "phase_label": phase_label,
+        "phase_color": phase_color,
+        "enps_proxy": enps_proxy,
+        "engines_share": round(engines_share * 100, 1),
+        "anchors_share": round(anchors_share * 100, 1),
+        "pretenders_count": pretenders,
+        "verdict": verdict,
+    }
+
+    # === Секция 2 + 3: EVP — что притягивает / что отталкивает ===
+    sorted_metrics = sorted(company_metrics_avg.items(), key=lambda x: -x[1])
+    inverted = {"stress_index", "burnout_risk"}
+    strengths_evp = [
+        {"metric": k, "value": v} for k, v in sorted_metrics
+        if k not in inverted and v >= 3.5
+    ][:5]
+    weaknesses_evp = [
+        {"metric": k, "value": v} for k, v in sorted_metrics
+        if (k not in inverted and v <= 2.5) or (k in inverted and v >= 3.5)
+    ][:5]
+
+    # === Секция 5: Schein — espoused vs underlying ===
+    espoused_top = [k["keyword"] for k in top_keywords[:8]]
+    underlying_critical = [f for f in dark_flags if f != "moderate_stress"][:5]
+    schein_gap = bool(
+        underlying_critical
+        and ("high_employer_brand" in flag_freq or company_metrics_avg.get("employer_brand", 0) >= 3.5)
+    )
+    schein_note = (
+        "Декларация и реальность разошлись: бренд работодателя сильный, "
+        "но скрытые сигналы говорят о другом."
+        if schein_gap
+        else "Декларация и скрытые сигналы согласованы."
+    )
+    schein = {
+        "espoused": espoused_top,
+        "underlying": underlying_critical,
+        "gap_detected": schein_gap,
+        "note": schein_note,
+    }
+
+    # === Секция 6: Карта рисков по отделам / площадкам ===
+    def _risk_score_for_unit(risks: Counter, respondents: int) -> float:
+        if not respondents:
+            return 0.0
+        critical_count = sum(
+            c for f, c in risks.items()
+            if any(p in f for p in ("anchor_pretender", "high_stress", "low_safety", "burnout"))
+        )
+        return round(min(critical_count / respondents, 1.0), 2)
+
+    risk_map_dept = {
+        dept: {
+            "respondents": by_dept_respondents[dept],
+            "risk_score": _risk_score_for_unit(risks, by_dept_respondents[dept]),
+            "top_risks": [
+                {"flag": f, "count": c}
+                for f, c in risks.most_common(5)
+            ],
+        }
+        for dept, risks in by_dept_risks.items()
+    }
+    risk_map_site = {
+        site: {
+            "respondents": by_site_respondents[site],
+            "risk_score": _risk_score_for_unit(risks, by_site_respondents[site]),
+            "top_risks": [
+                {"flag": f, "count": c}
+                for f, c in risks.most_common(5)
+            ],
+        }
+        for site, risks in by_site_risks.items()
+    }
+
+    # === Секция 8: Тренды по циклам ===
+    cycle_timeline = []
+    for cyc in sorted(by_cycle_metrics.keys()):
+        m_avg = {k: round(mean(vs), 2) for k, vs in by_cycle_metrics[cyc].items()}
+        anc = by_cycle_anchors.get(cyc, Counter())
+        total_anc = sum(anc.values())
+        cycle_timeline.append({
+            "cycle_tag": cyc,
+            "metrics": m_avg,
+            "engines_pct": round(
+                (anc.get("engine", 0) / total_anc * 100) if total_anc else 0, 1
+            ),
+            "anchors_pct": round(
+                ((anc.get("anchor", 0) + anc.get("anchor_pretender", 0)) / total_anc * 100)
+                if total_anc else 0, 1
+            ),
+        })
+
+    # Improving / deteriorating (последний цикл vs предпоследний)
+    improving, deteriorating = [], []
+    if len(cycle_timeline) >= 2:
+        prev = cycle_timeline[-2]["metrics"]
+        curr = cycle_timeline[-1]["metrics"]
+        for k in curr:
+            if k not in prev:
+                continue
+            diff = curr[k] - prev[k]
+            label = k
+            if k in inverted:
+                # для инвертированных метрик улучшение = снижение
+                if diff <= -0.3:
+                    improving.append({"metric": label, "delta": round(diff, 2)})
+                elif diff >= 0.3:
+                    deteriorating.append({"metric": label, "delta": round(diff, 2)})
+            else:
+                if diff >= 0.3:
+                    improving.append({"metric": label, "delta": round(diff, 2)})
+                elif diff <= -0.3:
+                    deteriorating.append({"metric": label, "delta": round(diff, 2)})
+
+    trends = {
+        "cycle_timeline": cycle_timeline,
+        "improving": improving,
+        "deteriorating": deteriorating,
+    }
+
+    # === Секция 9: Top рекомендации (агрегация) ===
+    top_actions = [
+        {"text": t, "count": c}
+        for t, c in Counter(all_recommendations).most_common(10)
+    ]
+
     return {
         "respondents": total_responses,
         "cycle_tag": cycle_tag,
+
+        # Новая структура (9 секций)
+        "diagnosis": diagnosis,
+        "company_metrics_avg": company_metrics_avg,
+        "evp_attractive": {
+            "top_strengths": strengths_evp,
+            "light_signals": light_flags,
+        },
+        "evp_repelling": {
+            "top_weaknesses": weaknesses_evp,
+            "dark_signals": dark_flags,
+        },
+        "schein": schein,
+        "risk_map": {
+            "by_department": risk_map_dept,
+            "by_site": risk_map_site,
+        },
+        "trends": trends,
+        "top_actions": top_actions,
+
+        # Старые поля (обратная совместимость)
         "top_keywords": top_keywords,
         "sample_sentences": sample_sentences,
         "flag_freq": dict(flag_freq.most_common()),

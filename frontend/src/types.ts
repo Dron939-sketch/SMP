@@ -309,6 +309,64 @@ export interface PortraitEmployeeDetail {
 export interface PortraitCompany {
   respondents: number;
   cycle_tag: string | null;
+
+  // 9 секций
+  diagnosis: {
+    phase: string;
+    phase_label: string;
+    phase_color: string;
+    enps_proxy: number;
+    engines_share: number;
+    anchors_share: number;
+    pretenders_count: number;
+    verdict: string;
+  };
+  company_metrics_avg: Record<string, number>;
+  evp_attractive: {
+    top_strengths: { metric: string; value: number }[];
+    light_signals: string[];
+  };
+  evp_repelling: {
+    top_weaknesses: { metric: string; value: number }[];
+    dark_signals: string[];
+  };
+  schein: {
+    espoused: string[];
+    underlying: string[];
+    gap_detected: boolean;
+    note: string;
+  };
+  risk_map: {
+    by_department: Record<
+      string,
+      {
+        respondents: number;
+        risk_score: number;
+        top_risks: { flag: string; count: number }[];
+      }
+    >;
+    by_site: Record<
+      string,
+      {
+        respondents: number;
+        risk_score: number;
+        top_risks: { flag: string; count: number }[];
+      }
+    >;
+  };
+  trends: {
+    cycle_timeline: {
+      cycle_tag: string;
+      metrics: Record<string, number>;
+      engines_pct: number;
+      anchors_pct: number;
+    }[];
+    improving: { metric: string; delta: number }[];
+    deteriorating: { metric: string; delta: number }[];
+  };
+  top_actions: { text: string; count: number }[];
+
+  // Старые поля (обратная совместимость)
   top_keywords: { keyword: string; weight: number; mentions: number }[];
   sample_sentences: { text: string; cycle_tag: string }[];
   flag_freq: Record<string, number>;

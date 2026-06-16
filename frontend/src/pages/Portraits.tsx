@@ -819,7 +819,14 @@ function EmployeePortrait({
   );
 }
 
-// === Company tab (без изменений по структуре, только локализация) ===
+// === Company tab — 9 секций (research-based: Schein + Gallup Q12 + eNPS + Denison) ===
+
+const PHASE_COLOR_CLASS: Record<string, string> = {
+  green: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  yellow: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  red: "bg-red-500/15 text-red-300 border-red-500/30",
+  gray: "bg-slate-500/15 text-slate-300 border-slate-500/30",
+};
 
 function CompanyTab() {
   const [d, setD] = useState<PortraitCompany | null>(null);
@@ -834,17 +841,432 @@ function CompanyTab() {
   if (!d) return <div className="text-slate-400">Загрузка портрета компании…</div>;
 
   const maxWeight = Math.max(...d.top_keywords.map((k) => k.weight), 1);
+  const radarData = Object.entries(d.company_metrics_avg).map(([k, v]) => ({
+    metric: ruLabel(k),
+    value: INVERTED_METRICS.has(k) ? Math.max(0, 5 - v) : v,
+    actual: v,
+  }));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-      <div className="lg:col-span-7 space-y-4">
-        <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <div className="label">Облако слов — образ компании</div>
-            <span className="text-xs text-slate-500">
-              {d.respondents} ответов
-            </span>
+    <div className="space-y-4 sm:space-y-6">
+      {/* 1. ДИАГНОЗ */}
+      <div className="card card-accent">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="label">🎯 Диагноз компании</div>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-semibold border ${
+                  PHASE_COLOR_CLASS[d.diagnosis.phase_color] ||
+                  PHASE_COLOR_CLASS.gray
+                }`}
+              >
+                {d.diagnosis.phase_label}
+              </span>
+              <span className="text-sm text-slate-400">
+                eNPS-прокси:{" "}
+                <span
+                  className={`font-semibold ${
+                    d.diagnosis.enps_proxy > 20
+                      ? "text-emerald-300"
+                      : d.diagnosis.enps_proxy < -10
+                      ? "text-red-300"
+                      : "text-amber-300"
+                  }`}
+                >
+                  {d.diagnosis.enps_proxy > 0 ? "+" : ""}
+                  {d.diagnosis.enps_proxy}
+                </span>
+              </span>
+            </div>
           </div>
+          <div className="text-xs text-slate-500 text-right">
+            {d.respondents} ответов
+            <br />
+            Двигателей: {d.diagnosis.engines_share}% · Якорей:{" "}
+            {d.diagnosis.anchors_share}%
+            {d.diagnosis.pretenders_count > 0 && (
+              <>
+                <br />
+                Притворщиков: {d.diagnosis.pretenders_count}
+              </>
+            )}
+          </div>
+        </div>
+        <p className="text-sm text-slate-200 leading-relaxed">
+          {d.diagnosis.verdict}
+        </p>
+      </div>
+
+      {/* 4. РАДАР КУЛЬТУРЫ КОМПАНИИ */}
+      {radarData.length >= 3 && (
+        <div className="card">
+          <div className="label mb-2">🎨 Радар культуры компании</div>
+          <div className="text-xs text-slate-500 mb-2">
+            10 шкал в среднем. Стресс и выгорание инвертированы — «дальше = лучше».
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="#1f2937" />
+                <PolarAngleAxis
+                  dataKey="metric"
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                />
+                <PolarRadiusAxis
+                  domain={[0, 5]}
+                  tick={{ fontSize: 10, fill: "#475569" }}
+                />
+                <Radar
+                  dataKey="value"
+                  stroke="#3b82f6"
+                  fill="#3b82f6"
+                  fillOpacity={0.3}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#0f172a",
+                    border: "1px solid #1f2937",
+                    fontSize: 12,
+                  }}
+                  formatter={(value: unknown, _name: unknown, item: unknown) => {
+                    const actual = (item as { payload?: { actual?: number } })
+                      ?.payload?.actual;
+                    return [
+                      typeof actual === "number"
+                        ? actual.toFixed(2)
+                        : String(value),
+                      "значение",
+                    ];
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* 2 + 3. EVP */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="card">
+          <div className="label mb-2 text-emerald-300">🌟 Что притягивает</div>
+          {d.evp_attractive.top_strengths.length === 0 ? (
+            <div className="text-sm text-slate-500">
+              Сильных сторон по метрикам не выявлено.
+            </div>
+          ) : (
+            <ul className="space-y-1.5 text-sm mb-3">
+              {d.evp_attractive.top_strengths.map((s) => (
+                <li
+                  key={s.metric}
+                  className="flex items-center justify-between"
+                >
+                  <span>{ruLabel(s.metric)}</span>
+                  <span className="font-mono text-emerald-300">
+                    {s.value.toFixed(1)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {d.evp_attractive.light_signals.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {d.evp_attractive.light_signals.map((s) => (
+                <span
+                  key={s}
+                  className="chip bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                >
+                  {ruRiskFlag(s)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="label mb-2 text-red-300">⚠️ Что отталкивает</div>
+          {d.evp_repelling.top_weaknesses.length === 0 ? (
+            <div className="text-sm text-slate-500">
+              Слабых сторон по метрикам не выявлено.
+            </div>
+          ) : (
+            <ul className="space-y-1.5 text-sm mb-3">
+              {d.evp_repelling.top_weaknesses.map((s) => (
+                <li
+                  key={s.metric}
+                  className="flex items-center justify-between"
+                >
+                  <span>{ruLabel(s.metric)}</span>
+                  <span className="font-mono text-red-300">
+                    {s.value.toFixed(1)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {d.evp_repelling.dark_signals.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {d.evp_repelling.dark_signals.map((s) => (
+                <span
+                  key={s}
+                  className="chip bg-red-500/10 text-red-300 border border-red-500/20"
+                >
+                  {ruRiskFlag(s)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 5. SCHEIN — говорят vs чувствуют */}
+      <div className="card">
+        <div className="label mb-2">🧬 Что говорят vs что чувствуют</div>
+        <div className="text-xs text-slate-500 mb-3">
+          По модели Шейна: декларируемые ценности (видимые слова) vs скрытые
+          сигналы (поведенческие данные).
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div className="border border-white/10 rounded-lg p-3 bg-white/[0.02]">
+            <div className="text-xs uppercase text-slate-500 tracking-wide mb-2">
+              💬 Что декларируется (топ-слов)
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {d.schein.espoused.map((w) => (
+                <span
+                  key={w}
+                  className="text-xs px-2 py-0.5 rounded bg-blue-500/15 text-blue-300"
+                >
+                  {w}
+                </span>
+              ))}
+              {d.schein.espoused.length === 0 && (
+                <span className="text-xs text-slate-500">нет данных</span>
+              )}
+            </div>
+          </div>
+          <div className="border border-white/10 rounded-lg p-3 bg-white/[0.02]">
+            <div className="text-xs uppercase text-slate-500 tracking-wide mb-2">
+              🔍 Что в реальности (скрытые сигналы)
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {d.schein.underlying.map((f) => (
+                <span
+                  key={f}
+                  className="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-300"
+                >
+                  {ruRiskFlag(f)}
+                </span>
+              ))}
+              {d.schein.underlying.length === 0 && (
+                <span className="text-xs text-slate-500">нет критики</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div
+          className={`text-sm leading-relaxed ${
+            d.schein.gap_detected ? "text-amber-200" : "text-emerald-200"
+          }`}
+        >
+          {d.schein.gap_detected && "⚠️ "}
+          {d.schein.note}
+        </div>
+      </div>
+
+      {/* 6. КАРТА РИСКОВ */}
+      {(Object.keys(d.risk_map.by_department).length > 0 ||
+        Object.keys(d.risk_map.by_site).length > 0) && (
+        <div className="card">
+          <div className="label mb-3">🗺 Карта рисков по подразделениям</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {Object.keys(d.risk_map.by_department).length > 0 && (
+              <div>
+                <div className="text-xs uppercase text-slate-500 tracking-wide mb-2">
+                  По отделам
+                </div>
+                <div className="space-y-2">
+                  {Object.entries(d.risk_map.by_department)
+                    .sort(([, a], [, b]) => b.risk_score - a.risk_score)
+                    .map(([dept, info]) => (
+                      <div
+                        key={dept}
+                        className="border border-white/10 rounded-lg p-2.5 bg-white/[0.02]"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{dept}</span>
+                          <span
+                            className={`text-xs ${
+                              info.risk_score > 0.5
+                                ? "text-red-300"
+                                : info.risk_score > 0.2
+                                ? "text-amber-300"
+                                : "text-emerald-300"
+                            }`}
+                          >
+                            риск {Math.round(info.risk_score * 100)}%
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          {info.respondents} респ.
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {info.top_risks.slice(0, 3).map((r) => (
+                            <span
+                              key={r.flag}
+                              className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-300"
+                            >
+                              {ruRiskFlag(r.flag)} ({r.count})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+            {Object.keys(d.risk_map.by_site).length > 0 && (
+              <div>
+                <div className="text-xs uppercase text-slate-500 tracking-wide mb-2">
+                  По площадкам/объектам
+                </div>
+                <div className="space-y-2">
+                  {Object.entries(d.risk_map.by_site)
+                    .sort(([, a], [, b]) => b.risk_score - a.risk_score)
+                    .map(([site, info]) => (
+                      <div
+                        key={site}
+                        className="border border-white/10 rounded-lg p-2.5 bg-white/[0.02]"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{site}</span>
+                          <span
+                            className={`text-xs ${
+                              info.risk_score > 0.5
+                                ? "text-red-300"
+                                : info.risk_score > 0.2
+                                ? "text-amber-300"
+                                : "text-emerald-300"
+                            }`}
+                          >
+                            риск {Math.round(info.risk_score * 100)}%
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          {info.respondents} респ.
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {info.top_risks.slice(0, 3).map((r) => (
+                            <span
+                              key={r.flag}
+                              className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-300"
+                            >
+                              {ruRiskFlag(r.flag)} ({r.count})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 8. ТРЕНДЫ */}
+      {d.trends.cycle_timeline.length >= 2 && (
+        <div className="card">
+          <div className="label mb-2">📈 Тренды по циклам</div>
+          {(d.trends.improving.length > 0 ||
+            d.trends.deteriorating.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div className="border border-emerald-500/30 rounded-lg p-3 bg-emerald-500/5">
+                <div className="text-xs uppercase text-emerald-300 tracking-wide mb-2">
+                  📈 Улучшается
+                </div>
+                {d.trends.improving.length === 0 ? (
+                  <div className="text-xs text-slate-500">
+                    Нет заметных улучшений за период.
+                  </div>
+                ) : (
+                  <ul className="text-sm space-y-1">
+                    {d.trends.improving.map((m) => (
+                      <li
+                        key={m.metric}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{ruLabel(m.metric)}</span>
+                        <span className="font-mono text-emerald-300 text-xs">
+                          {m.delta > 0 ? "+" : ""}
+                          {m.delta}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="border border-red-500/30 rounded-lg p-3 bg-red-500/5">
+                <div className="text-xs uppercase text-red-300 tracking-wide mb-2">
+                  📉 Ухудшается
+                </div>
+                {d.trends.deteriorating.length === 0 ? (
+                  <div className="text-xs text-slate-500">
+                    Нет заметных ухудшений за период.
+                  </div>
+                ) : (
+                  <ul className="text-sm space-y-1">
+                    {d.trends.deteriorating.map((m) => (
+                      <li
+                        key={m.metric}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{ruLabel(m.metric)}</span>
+                        <span className="font-mono text-red-300 text-xs">
+                          {m.delta > 0 ? "+" : ""}
+                          {m.delta}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="text-xs text-slate-500 mb-1">
+            Динамика двигателей и якорей по циклам
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-slate-500 text-left">
+                  <th className="py-1.5 pr-2 font-medium">Цикл</th>
+                  <th className="py-1.5 px-2 font-medium">Двигатели</th>
+                  <th className="py-1.5 px-2 font-medium">Якоря</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.trends.cycle_timeline.map((c) => (
+                  <tr key={c.cycle_tag} className="border-t border-white/5">
+                    <td className="py-1.5 pr-2">{c.cycle_tag}</td>
+                    <td className="py-1.5 px-2 text-emerald-300">
+                      {c.engines_pct}%
+                    </td>
+                    <td className="py-1.5 px-2 text-red-300">
+                      {c.anchors_pct}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 7. ОБЛАКО + ЦИТАТЫ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <div className="lg:col-span-7 card">
+          <div className="label mb-2">💭 Облако слов — образ компании</div>
           <div className="flex flex-wrap gap-2">
             {d.top_keywords.map((k) => {
               const scale = 0.7 + (k.weight / maxWeight) * 1.1;
@@ -862,84 +1284,10 @@ function CompanyTab() {
           </div>
         </div>
 
-        <div className="card">
-          <div className="label mb-2 text-red-300">
-            🚩 Тёмные сигналы (что портит образ)
-          </div>
-          {d.dark_signals.length === 0 ? (
-            <div className="text-sm text-slate-500">
-              Явных проблемных сигналов нет.
-            </div>
-          ) : (
-            <ul className="flex flex-wrap gap-1.5">
-              {d.dark_signals.map((s) => (
-                <li
-                  key={s}
-                  className="chip bg-red-500/10 text-red-300 border border-red-500/20"
-                >
-                  {ruRiskFlag(s)} ({d.flag_freq[s] || 0})
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="label mb-2 text-emerald-300">
-            🌿 Светлые сигналы
-          </div>
-          {d.light_signals.length === 0 ? (
-            <div className="text-sm text-slate-500">Нет.</div>
-          ) : (
-            <ul className="flex flex-wrap gap-1.5">
-              {d.light_signals.map((s) => (
-                <li
-                  key={s}
-                  className="chip bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
-                >
-                  {ruRiskFlag(s)} ({d.flag_freq[s] || 0})
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {Object.keys(d.by_department_top_keywords).length > 0 && (
-          <div className="card">
-            <div className="label mb-2">Топ-слова по отделам</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              {Object.entries(d.by_department_top_keywords).map(
-                ([dept, words]) => (
-                  <div
-                    key={dept}
-                    className="border border-white/5 rounded-lg p-3"
-                  >
-                    <div className="text-xs uppercase text-slate-500 tracking-wide mb-1">
-                      {dept}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {words.map((w) => (
-                        <span
-                          key={w}
-                          className="text-xs px-1.5 py-0.5 rounded bg-white/5"
-                        >
-                          {w}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="lg:col-span-5">
-        <div className="card">
-          <div className="label mb-2">Цитаты сотрудников</div>
-          <ul className="space-y-2 text-sm max-h-[600px] overflow-y-auto pr-1">
-            {d.sample_sentences.map((s, i) => (
+        <div className="lg:col-span-5 card">
+          <div className="label mb-2">💬 Голос сотрудников</div>
+          <ul className="space-y-2 text-sm max-h-[400px] overflow-y-auto pr-1">
+            {d.sample_sentences.slice(0, 20).map((s, i) => (
               <li
                 key={i}
                 className="border-l-2 border-smp-accent/40 pl-3 text-slate-300"
@@ -958,6 +1306,30 @@ function CompanyTab() {
           </ul>
         </div>
       </div>
+
+      {/* 9. ЧТО ДЕЛАТЬ */}
+      {d.top_actions.length > 0 && (
+        <div className="card">
+          <div className="label mb-2">🛠 Что делать (топ рекомендаций)</div>
+          <ul className="space-y-1.5 text-sm text-slate-200">
+            {d.top_actions.map((a, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-slate-500 flex-shrink-0">
+                  {i + 1}.
+                </span>
+                <span className="flex-1">
+                  {a.text}
+                  {a.count > 1 && (
+                    <span className="text-xs text-slate-500 ml-2">
+                      повторялось {a.count}×
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
