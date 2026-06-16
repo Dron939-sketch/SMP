@@ -1,9 +1,10 @@
-"""Сводные портреты сотрудников и портрет компании в их глазах.
+"""Сводные портреты респондентов и портрет компании в их глазах.
 
-Использует уже сохранённые AnalysisResult'ы (summary_text, score_metrics,
-employer_image, anchor_engine) — то есть AI-анализ генерируется на этапе
-обработки прохождения теста, а здесь мы просто красиво агрегируем то,
-что уже лежит в БД.
+ВАЖНО про идентификацию: в демо-режиме (shared-link сабмиты) все
+TestResponse'ы привязаны к одному технологическому user_id (замполит),
+а реальное имя сотрудника лежит в `TestResponse.respondent_name`.
+Поэтому портреты группируются именно по `respondent_name`, иначе все
+12 человек слипаются в одного Зорина.
 """
 
 from __future__ import annotations
@@ -18,22 +19,31 @@ from sqlalchemy.orm import selectinload
 
 from app.models.analysis import AnalysisResult
 from app.models.response import TestResponse
-from app.models.user import User, UserRole
+from app.models.user import User
+
+
+def _respondent_key(r: TestResponse, users_by_id: Dict[str, User]) -> str:
+    """Ключ группировки. Сначала — respondent_name (что сотрудник
+    ввёл на старте теста), потом fallback на full_name юзера."""
+    name = (r.respondent_name or "").strip()
+    if name:
+        return name
+    u = users_by_id.get(str(r.user_id))
+    if u and u.full_name:
+        return u.full_name
+    if u and u.email:
+        return u.email
+    return str(r.user_id)
 
 
 async def list_employee_portraits(
     db: AsyncSession, *, cycle_tag: str | None = None
 ) -> List[Dict[str, Any]]:
-    """Возвращает список сотрудников со сводкой их портретов.
+    """Возвращает список респондентов со сводкой их портретов.
 
-    Каждая запись:
-      - user_id, full_name, department, site, position
-      - tests_passed (сколько тестов прошёл)
-      - last_cycle_tag
-      - avg_metrics (усреднённые score_metrics по всем его анализам)
-      - latest_anchor_engine + confidence (последний)
-      - all_risk_flags (объединение тегов)
-      - latest_summary (последний summary_text)
+    Группировка по `respondent_name` (PII введён сотрудником).
+    Если у нескольких сабмитов одинаковое имя — это один и тот же
+    человек, и его портрет суммируется по всем циклам.
     """
     q = (
         select(TestResponse)
@@ -44,31 +54,28 @@ async def list_employee_portraits(
         q = q.where(TestResponse.cycle_tag == cycle_tag)
     rows = (await db.execute(q)).scalars().all()
 
-    # Group by user_id
-    by_user: Dict[str, List[TestResponse]] = {}
-    for r in rows:
-        by_user.setdefault(str(r.user_id), []).append(r)
-
-    # Подгружаем user'ов одним запросом
-    user_ids = list(by_user.keys())
-    if not user_ids:
-        return []
-    users = (
-        await db.execute(select(User).where(User.id.in_(user_ids)))
-    ).scalars().all()
+    # Подгружаем юзеров одним запросом
+    user_ids = list({str(r.user_id) for r in rows})
+    users: List[User] = []
+    if user_ids:
+        users = (
+            await db.execute(select(User).where(User.id.in_(user_ids)))
+        ).scalars().all()
     users_by_id = {str(u.id): u for u in users}
 
+    # Group by respondent_name
+    by_resp: Dict[str, List[TestResponse]] = {}
+    for r in rows:
+        key = _respondent_key(r, users_by_id)
+        by_resp.setdefault(key, []).append(r)
+
     out: List[Dict[str, Any]] = []
-    for uid, responses in by_user.items():
-        u = users_by_id.get(uid)
-        if not u or u.role == UserRole.ADMIN:
-            # admin/test-аккаунты не показываем в портретах
-            continue
+    for name, responses in by_resp.items():
         responses_sorted = sorted(responses, key=lambda x: x.submitted_at, reverse=True)
         latest = responses_sorted[0]
         latest_an = latest.analysis
+        u = users_by_id.get(str(latest.user_id))
 
-        # Aggregate metrics
         metric_buckets: Dict[str, List[float]] = {}
         all_flags: List[str] = []
         for r in responses_sorted:
@@ -85,11 +92,11 @@ async def list_employee_portraits(
 
         out.append(
             {
-                "user_id": uid,
-                "full_name": u.full_name or u.email,
-                "department": u.department,
-                "site": u.site,
-                "position": u.position,
+                "user_id": name,  # ключ для роутинга /portraits/<key>
+                "full_name": name,
+                "department": (u.department if u else None),
+                "site": (u.site if u else None),
+                "position": (u.position if u else None),
                 "tests_passed": len(responses_sorted),
                 "last_cycle_tag": latest.cycle_tag,
                 "last_submitted_at": latest.submitted_at.isoformat() if latest.submitted_at else None,
@@ -103,7 +110,6 @@ async def list_employee_portraits(
             }
         )
 
-    # Сортируем по риску — кто с большим числом флагов или anchor_pretender → вверх
     def _risk_score(row: Dict[str, Any]) -> float:
         score = len(row["risk_flags"])
         if row["anchor_engine"] == "anchor_pretender":
@@ -119,21 +125,24 @@ async def list_employee_portraits(
 async def get_employee_portrait(
     db: AsyncSession, *, user_id: str
 ) -> Dict[str, Any] | None:
-    """Детальный портрет одного сотрудника: история всех его тестов,
-    динамика метрик, все summary_text по циклам."""
-    user = await db.get(User, user_id)
-    if not user:
-        return None
-    if user.role == UserRole.ADMIN:
-        return None
+    """Детальный портрет одного респондента.
 
+    `user_id` тут — это `respondent_name` (см. list_employee_portraits).
+    """
     q = (
         select(TestResponse)
-        .where(TestResponse.user_id == user_id)
+        .where(TestResponse.respondent_name == user_id)
         .options(selectinload(TestResponse.analysis))
         .order_by(TestResponse.submitted_at.asc())
     )
     responses = (await db.execute(q)).scalars().all()
+    if not responses:
+        return None
+
+    user_meta: User | None = None
+    if responses:
+        u_id = str(responses[0].user_id)
+        user_meta = await db.get(User, u_id)
 
     history = []
     metric_timeline: Dict[str, List[Dict[str, Any]]] = {}
@@ -174,19 +183,18 @@ async def get_employee_portrait(
         for k, points in metric_timeline.items()
     }
     risk_freq = dict(Counter(all_flags).most_common())
-    # уникальные рекомендации с подсчётом
     rec_counter = Counter(all_recommendations)
     top_recs = [{"text": t, "count": c} for t, c in rec_counter.most_common(15)]
 
     return {
         "user": {
-            "id": str(user.id),
-            "full_name": user.full_name or user.email,
-            "email": user.email,
-            "role": user.role.value,
-            "department": user.department,
-            "site": user.site,
-            "position": user.position,
+            "id": user_id,
+            "full_name": user_id,
+            "email": (user_meta.email if user_meta else None),
+            "role": (user_meta.role.value if user_meta else "respondent"),
+            "department": (user_meta.department if user_meta else None),
+            "site": (user_meta.site if user_meta else None),
+            "position": (user_meta.position if user_meta else None),
         },
         "tests_passed": len(history),
         "avg_metrics": avg_metrics,
@@ -200,12 +208,7 @@ async def get_employee_portrait(
 async def get_company_portrait(
     db: AsyncSession, *, cycle_tag: str | None = None, top_k_keywords: int = 50
 ) -> Dict[str, Any]:
-    """Расширенный портрет компании в глазах сотрудников.
-
-    Агрегирует все employer_image из AnalysisResult — собирает все
-    keywords с весами, все цитаты-предложения, и группирует по
-    тональности через risk_flags.
-    """
+    """Расширенный портрет компании в глазах сотрудников."""
     q = select(TestResponse).options(selectinload(TestResponse.analysis))
     if cycle_tag:
         q = q.where(TestResponse.cycle_tag == cycle_tag)
@@ -217,11 +220,12 @@ async def get_company_portrait(
     flag_freq: Counter[str] = Counter()
     by_dept_keywords: Dict[str, Counter] = {}
 
-    # Подгружаем юзеров для разрезов по отделу
     user_ids = list({str(r.user_id) for r in rows})
-    users = (
-        await db.execute(select(User).where(User.id.in_(user_ids)))
-    ).scalars().all() if user_ids else []
+    users: List[User] = []
+    if user_ids:
+        users = (
+            await db.execute(select(User).where(User.id.in_(user_ids)))
+        ).scalars().all()
     users_by_id = {str(u.id): u for u in users}
 
     total_responses = 0
@@ -238,7 +242,6 @@ async def get_company_portrait(
                 continue
             keyword_weights[word] = keyword_weights.get(word, 0) + weight
             keyword_mentions[word] = keyword_mentions.get(word, 0) + 1
-            # per-department
             u = users_by_id.get(str(r.user_id))
             if u and u.department:
                 by_dept_keywords.setdefault(u.department, Counter())[word] += 1
@@ -247,7 +250,6 @@ async def get_company_portrait(
         for f in (an.risk_flags or []):
             flag_freq[f] += 1
 
-    # Топ слов: сортируем по весу, ограничиваем
     top_keywords = sorted(
         (
             {"keyword": w, "weight": round(weight, 2), "mentions": keyword_mentions.get(w, 0)}
@@ -256,10 +258,8 @@ async def get_company_portrait(
         key=lambda x: (-x["weight"], -x["mentions"]),
     )[:top_k_keywords]
 
-    # Семплируем 30 интересных цитат (разные циклы)
     sample_sentences = all_sentences[:30]
 
-    # Топ "тёмных" флагов (что портит образ)
     dark_flags = [
         f
         for f, c in flag_freq.most_common()

@@ -24,8 +24,82 @@ const ANCHOR_LABEL: Record<string, string> = {
   anchor_pretender: "Якорь-притворщик",
 };
 
+const PORTRAITS_PASSWORD = "1004";
+const PORTRAITS_AUTH_KEY = "smp_portraits_unlocked";
+
+function PortraitsPasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState(false);
+
+  const tryUnlock = () => {
+    if (pwd === PORTRAITS_PASSWORD) {
+      try {
+        sessionStorage.setItem(PORTRAITS_AUTH_KEY, "1");
+      } catch {}
+      onUnlock();
+    } else {
+      setErr(true);
+      setTimeout(() => setErr(false), 1200);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto mt-20">
+      <div className="card text-center space-y-4 p-6">
+        <div className="text-4xl">🔒</div>
+        <h2 className="text-xl font-semibold">Раздел с PII</h2>
+        <p className="text-sm text-slate-400">
+          Портреты содержат ФИО сотрудников и индивидуальные оценки.
+          Доступ — по паролю.
+        </p>
+        <input
+          type="password"
+          value={pwd}
+          onChange={(e) => {
+            setPwd(e.target.value);
+            setErr(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") tryUnlock();
+          }}
+          autoFocus
+          placeholder="Пароль"
+          className={`w-full bg-white/5 border rounded-lg px-3 py-2.5 text-center text-lg tracking-widest outline-none transition ${
+            err
+              ? "border-red-500/60 animate-pulse"
+              : "border-white/10 focus:border-smp-accent"
+          }`}
+        />
+        {err && (
+          <div className="text-sm text-red-400">Неверный пароль</div>
+        )}
+        <button onClick={tryUnlock} className="btn-primary w-full">
+          Войти
+        </button>
+        <Link
+          to="/"
+          className="block text-xs text-slate-500 hover:text-slate-300"
+        >
+          ← Назад на дашборд
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function Portraits() {
   const [tab, setTab] = useState<Tab>("employees");
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(PORTRAITS_AUTH_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  if (!unlocked) {
+    return <PortraitsPasswordGate onUnlock={() => setUnlocked(true)} />;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
