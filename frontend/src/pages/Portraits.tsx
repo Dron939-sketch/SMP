@@ -439,6 +439,27 @@ function EmployeePortrait({
       .catch((e) => setErr(e.message));
   }, [userId]);
 
+  // ⚠️ useMemo и прочие хуки ДО early-return'ов — иначе React #310
+  // ("Rendered more hooks than during the previous render").
+  const timelineData = useMemo(() => {
+    if (!d) return [];
+    const keys = Object.entries(d.metric_timeline)
+      .filter(([, points]) => points.length >= 2)
+      .map(([k]) => k)
+      .slice(0, 5);
+    if (!keys.length) return [];
+    const map: Record<string, Record<string, string | number>> = {};
+    for (const k of keys) {
+      for (const p of d.metric_timeline[k] || []) {
+        if (!map[p.cycle_tag]) {
+          map[p.cycle_tag] = { cycle_tag: p.cycle_tag };
+        }
+        map[p.cycle_tag][k] = p.value;
+      }
+    }
+    return Object.values(map);
+  }, [d]);
+
   if (err) return <div className="card text-smp-crit">{err}</div>;
   if (!d) return <div className="text-slate-400">Загрузка портрета…</div>;
 
@@ -466,26 +487,11 @@ function EmployeePortrait({
       risks.push({ label: ruLabel(k), value: v, raw: v });
   });
 
-  // Top 3 metrics for timeline
+  // ключи для подписи линий на чарте (НЕ хук, можно после return'ов)
   const timelineKeys = Object.entries(d.metric_timeline)
     .filter(([, points]) => points.length >= 2)
     .map(([k]) => k)
     .slice(0, 5);
-
-  const timelineData = useMemo(() => {
-    if (!timelineKeys.length) return [];
-    // build cycle → metrics map (значения смешанные — cycle_tag строка, метрики числа)
-    const map: Record<string, Record<string, string | number>> = {};
-    for (const k of timelineKeys) {
-      for (const p of d.metric_timeline[k] || []) {
-        if (!map[p.cycle_tag]) {
-          map[p.cycle_tag] = { cycle_tag: p.cycle_tag };
-        }
-        map[p.cycle_tag][k] = p.value;
-      }
-    }
-    return Object.values(map);
-  }, [d, timelineKeys]);
 
   return (
     <div className="space-y-4 sticky top-4">
