@@ -51,43 +51,52 @@ async def _get_or_build_cache(
     1. Ищем CachedPortrait по (type, subject, cycle).
     2. Если есть и input_hash совпадает — возвращаем aggregated_data.
     3. Иначе строим через build_fn(), сохраняем, возвращаем.
+
+    DEFENSIVE: при любой ошибке работы с таблицей cached_portraits
+    (например, если она ещё не создана миграцией) — молча падаем
+    на прямой вызов build_fn, без сохранения. Это гарантирует что
+    endpoint не отдаст 500 из-за отсутствующей кеш-таблицы.
     """
-    q = select(CachedPortrait).where(
-        CachedPortrait.portrait_type == portrait_type,
-        CachedPortrait.subject_key == subject_key,
-    )
-    if cycle_tag is None:
-        q = q.where(CachedPortrait.cycle_tag.is_(None))
-    else:
-        q = q.where(CachedPortrait.cycle_tag == cycle_tag)
-    existing = (await db.execute(q)).scalar_one_or_none()
+    try:
+        q = select(CachedPortrait).where(
+            CachedPortrait.portrait_type == portrait_type,
+            CachedPortrait.subject_key == subject_key,
+        )
+        if cycle_tag is None:
+            q = q.where(CachedPortrait.cycle_tag.is_(None))
+        else:
+            q = q.where(CachedPortrait.cycle_tag == cycle_tag)
+        existing = (await db.execute(q)).scalar_one_or_none()
+    except Exception as e:
+        logger.warning(
+            "portrait cache read failed (probably table missing): %s — falling back to direct compute",
+            e,
+        )
+        return await build_fn()
 
     if existing and existing.input_hash == current_hash:
         return dict(existing.aggregated_data)
 
     data = await build_fn()
-    if existing:
-        existing.input_hash = current_hash
-        existing.aggregated_data = data
-        # synthesized_text не трогаем — пусть пересоздаётся отдельно,
-        # если пользователь жмёт «Сгенерировать литературный портрет».
-        # При смене input_hash литературный синтез автоматически считается
-        # устаревшим (фронт ориентируется на updated_at vs hash).
-    else:
-        db.add(
-            CachedPortrait(
-                portrait_type=portrait_type,
-                subject_key=subject_key,
-                cycle_tag=cycle_tag,
-                input_hash=current_hash,
-                aggregated_data=data,
-            )
-        )
     try:
+        if existing:
+            existing.input_hash = current_hash
+            existing.aggregated_data = data
+            # synthesized_text не трогаем — пусть пересоздаётся отдельно,
+            # если пользователь жмёт «Сгенерировать литературный портрет».
+        else:
+            db.add(
+                CachedPortrait(
+                    portrait_type=portrait_type,
+                    subject_key=subject_key,
+                    cycle_tag=cycle_tag,
+                    input_hash=current_hash,
+                    aggregated_data=data,
+                )
+            )
         await db.flush()
     except Exception as e:
-        # Если по какой-то причине не удалось закешировать — логируем и
-        # возвращаем данные. На UX это не должно влиять.
+        # Кеш — не критично. Сами данные у нас уже есть, отдаём как есть.
         logger.warning("portrait cache save failed: %s", e)
     return data
 
