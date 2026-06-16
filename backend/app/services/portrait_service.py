@@ -363,7 +363,7 @@ async def get_company_portrait(
     items = sorted(
         (str(r[0]), r[1].isoformat() if r[1] else "") for r in hash_rows
     )
-    current_hash = _input_hash(items + [f"top_k:{top_k_keywords}"])
+    current_hash = _input_hash(items + [("__top_k__", str(top_k_keywords))])
 
     async def _build() -> Dict[str, Any]:
         return await _build_company_portrait(
